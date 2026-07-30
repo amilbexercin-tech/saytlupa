@@ -35,6 +35,30 @@ function butunBolmeleriGizlet() {
   sohbetId = null;
 }
 
+/* ---------------- açıq/qaranlıq rejim (Gün 14) ---------------- */
+
+const temaDugme = el('d-tema');
+
+/* `data-tema` yoxdursa sistemin rejimi işləyir — düymə yalnız onu üstələyir. */
+function temaOxu() {
+  return document.documentElement.getAttribute('data-tema') ||
+    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'isiqli' : 'qaranliq');
+}
+
+/* Düymədə keçiləcək rejimin işarəsi göstərilir, cari rejimin yox. */
+function temaDugmeniYenile() {
+  temaDugme.textContent = temaOxu() === 'isiqli' ? '🌙' : '☀️';
+}
+
+temaDugme.addEventListener('click', () => {
+  const yeni = temaOxu() === 'isiqli' ? 'qaranliq' : 'isiqli';
+  document.documentElement.setAttribute('data-tema', yeni);
+  localStorage.setItem('tema', yeni);
+  temaDugmeniYenile();
+});
+
+temaDugmeniYenile();
+
 /* ---------------- sistem vəziyyəti ---------------- */
 
 const nisan = (ad, aktiv) =>

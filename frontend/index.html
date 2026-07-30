@@ -5,11 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>SaytLupa — Sayt Analiz və Söhbət Agenti</title>
 <link rel="stylesheet" href="/static/style.css" />
+<script>
+  /* Rejim ilk boyamadan ƏVVƏL qoyulur — əks halda səhifə bir an yanlış
+     rəngdə görünüb sonra dəyişir. Seçim yoxdursa sistemin rejimi qalır. */
+  (function () {
+    var tema = localStorage.getItem('tema');
+    if (tema) document.documentElement.setAttribute('data-tema', tema);
+  })();
+</script>
 </head>
 <body>
 <div class="qab">
 
-  <h1>🔍 SaytLupa</h1>
+  <div class="baslik">
+    <h1>🔍 SaytLupa</h1>
+    <button id="d-tema" class="tema-dugme" type="button"
+            title="Açıq/qaranlıq rejim" aria-label="Açıq/qaranlıq rejim"></button>
+  </div>
   <p class="alt">Link yaz → saytı tanı → saytla danış → daha yaxşısını qur.</p>
 
   <!-- ---------------- axtarış ---------------- -->

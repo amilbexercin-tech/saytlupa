@@ -199,3 +199,50 @@ Standart model **Claude** olaraq qalır (`chains/model.py` fallback zənciri:
 Claude → Gemini → Gemma). Ölçmə bu seçimi təsdiqlədi: eyni keyfiyyət, üç dəfə
 kiçik fayl. Claude açarı olmayan maşında Gemini variantı da işlək nəticə verir —
 nümayiş dayanmır.
+
+---
+
+# 5-ci ölçmə: opus daha yaxşı qurur? (2026-07-30)
+
+## Problem
+
+Dizayn sənədində ağır iş (müasir versiya) üçün `claude-opus-5` variantının
+sınanması nəzərdə tutulmuşdu. 4-cü ölçmə sonnet ilə aparılmışdı; sual belədir:
+daha güclü model daha yaxşı səhifə qururmu?
+
+## Ölçmə
+
+Eyni sayt, **eyni analiz (#46)**, eyni prompt, eyni zəncir (`chains/muasir.py`).
+Fərq yalnız `CLAUDE_MODEL` dəyişənindədir.
+
+| Model | Vaxt | Fayl | Media sorğusu | `aria`/`alt` | Nəticə |
+|---|---|---|---|---|---|
+| **`claude-sonnet-5`** | **72.9 san** | 16.9 KB | 3 | 4 | ✅ işlək səhifə |
+| `claude-opus-5` | 91.5 san | 16.7 KB | 11 | 14 | ❌ hero görünmür |
+
+## Nə göründü
+
+Opus **25% yavaşdır**, fayl ölçüsü isə praktiki olaraq eynidir. Kağız üzərində
+iki üstünlüyü var: üç dəfə çox media sorğusu (daha ciddi uyğunlaşan tərtibat) və
+üç dəfə çox əlçatanlıq atributu.
+
+**Amma səhifə sınıqdır.** Brauzerdə açanda başlıq görünmür: `section.hero`-nun
+fonu şəffafdır, `h1` isə ağdır — yəni **ağ üzərində ağ mətn**. DOM-da mətn var
+(`opacity: 1`, `visibility: visible`), sadəcə oxunmur. Sonnet versiyasında hero
+tünd fonludur və düzgün görünür.
+
+| Səhifə | Görüntü |
+|---|---|
+| sonnet (işləyir) | [`ekran/09-muasir-versiya.png`](ekran/09-muasir-versiya.png) |
+| opus (hero boş görünür) | [`ekran/13-opus-muasir.png`](ekran/13-opus-muasir.png) |
+
+Bu, **bir ölçmədir** — opus-un həmişə belə edəcəyini sübut etmir. İki dürüst
+qeyd: promptun özü sonnet ilə sınanıb və ona uyğunlaşdırılıb, ölçmə də bir dəfə
+aparılıb. Ona görə nəticə «opus pisdir» yox, «bu prompt opus ilə sınanmayıb»
+kimi oxunmalıdır.
+
+## Qərar
+
+Standart model **`claude-sonnet-5`** olaraq qalır. Opus nə sürətdə, nə ölçüdə
+üstünlük vermədi, üstəlik bu ölçmədə istifadəyə yararsız səhifə qaytardı —
+daha bahalı modelə keçmək üçün səbəb tapılmadı.

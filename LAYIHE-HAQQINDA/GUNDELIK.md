@@ -519,6 +519,62 @@ xətası yoxdur.
 
 ---
 
+## 2026-07-30 (davamı) — Gün 14: tema düyməsi və opus ölçməsi
+
+### ✅ Bitən işlər
+
+| Nə | Harada |
+|---|---|
+| Açıq/qaranlıq keçid düyməsi (yaddaşda saxlanılır) | `index.html`, `app.js`, `style.css` |
+| 5-ci ölçmə: `claude-opus-5` müasir versiyanı necə qurur | `docs/model-secimi.md` |
+| gh CLI quraşdırıldı (2.96.0) | maşın |
+
+### 🎨 Tema düyməsi
+
+Əvvəl yalnız `prefers-color-scheme` var idi — sistem nə deyirdisə, o olurdu.
+İndi düymə `<html data-tema="isiqli|qaranliq">` qoyur və seçim
+`localStorage`-də saxlanılır.
+
+**Bir incəlik:** media bloku `:root:not([data-tema="qaranliq"])` kimi yazıldı.
+Əks halda sistem açıq rejimdə olanda istifadəçinin qaranlıq seçimi işləməzdi —
+media bloku onu üstələyərdi.
+
+**İkinci incəlik:** rejim `<head>`-dəki kiçik skriptdə, ilk boyamadan əvvəl
+qoyulur. `app.js` faylın sonunda yüklənir, orada qoysaydıq səhifə bir an
+yanlış rəngdə görünərdi.
+
+Yoxlandı: klik → fon dəyişir, yenilədikdə seçim qalır, geri keçid işləyir,
+konsol xətası yoxdur.
+
+### 📊 Opus daha yaxşı qurmadı
+
+Eyni analiz (#46), eyni prompt, yalnız model dəyişdi:
+
+| Model | Vaxt | Fayl | Nəticə |
+|---|---|---|---|
+| **`claude-sonnet-5`** | **72.9 san** | 16.9 KB | ✅ işlək səhifə |
+| `claude-opus-5` | 91.5 san | 16.7 KB | ❌ hero görünmür |
+
+Opus 25% yavaşdır, fayl ölçüsü eynidir. Kağız üzərində üstünlükləri var (11
+media sorğusu vs 3, 14 `aria`/`alt` vs 4), **amma səhifə sınıqdır**: brauzerdə
+başlıq görünmür, çünki `section.hero` şəffafdır və `h1` ağdır — ağ üzərində ağ.
+DOM-da mətn var, sadəcə oxunmur.
+
+Bu, bir ölçmədir və prompt sonnet ilə tənzimlənib — nəticə «opus pisdir» yox,
+«bu prompt opus ilə sınanmayıb» kimi oxunmalıdır. Standart model dəyişmir.
+
+Görüntü: `docs/ekran/13-opus-muasir.png`. Ölçmə zamanı sonnet faylı silinməsin
+deyə əvvəlcədən ehtiyat nüsxə götürüldü — 4-cü ölçmədə Gemini faylı üzərinə
+yazıldığı üçün müqayisə edilə bilməmişdi, bu dəfə səhv təkrarlanmadı.
+
+### ⏳ Qalan
+
+GitHub repo — `gh auth login` istifadəçi tərəfindən edilməlidir (brauzerdə
+giriş). Sirr yoxlaması aparılıb: commit olunmuş fayllarda açar, token və ya
+şəxsi məlumat yoxdur; `.env` `.gitignore`-dadır, `.env.example` boşdur.
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama

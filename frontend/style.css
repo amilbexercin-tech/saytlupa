@@ -1,5 +1,10 @@
 /* SaytLupa — interfeys üslubu.
-   Açıq və qaranlıq rejim dəstəklənir; xarici fayl və şrift yüklənmir. */
+   Xarici fayl və şrift yüklənmir.
+
+   Rejim: standart olaraq əməliyyat sisteminin seçimi. İstifadəçi düymə ilə
+   dəyişsə, `<html data-tema="...">` qoyulur və o, sistemin seçimini üstələyir
+   (`:not()` ona görə lazımdır: sistem açıq rejimdədirsə, amma istifadəçi
+   qaranlıq seçibsə, media bloku işə düşməməlidir). */
 
 :root {
   --fon: #0f1117;
@@ -16,7 +21,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-tema="qaranliq"]) {
     --fon: #f5f6fa;
     --kart: #ffffff;
     --kart2: #f0f2f7;
@@ -24,6 +29,15 @@
     --metn: #14161d;
     --solgun: #5c6478;
   }
+}
+
+:root[data-tema="isiqli"] {
+  --fon: #f5f6fa;
+  --kart: #ffffff;
+  --kart2: #f0f2f7;
+  --kenar: #e2e5ee;
+  --metn: #14161d;
+  --solgun: #5c6478;
 }
 
 * { box-sizing: border-box; }
@@ -37,6 +51,12 @@ body {
 }
 
 .qab { max-width: 1000px; margin: 0 auto; padding: 40px 20px 80px; }
+
+.baslik { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.tema-dugme {
+  padding: 8px 12px; font-size: 18px; line-height: 1;
+  background: var(--kart2); color: var(--metn); border: 1px solid var(--kenar);
+}
 
 h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.5px; }
 h2 { font-size: 17px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
