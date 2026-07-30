@@ -26,10 +26,12 @@ function gedisatSetri(ad, metn, sinif = '') {
 
 function butunBolmeleriGizlet() {
   ['k-umumi', 'k-hesabat', 'k-tehvil', 'k-sohbet', 'k-texno', 'k-server',
-   'k-performans', 'k-dizayn', 'k-reklam', 'k-mezmun', 'k-sehifeler'].forEach(gizlet);
+   'k-performans', 'k-dizayn', 'k-reklam', 'k-mezmun', 'k-muqayise',
+   'k-sehifeler'].forEach(gizlet);
   el('xeberdarliq').innerHTML = '';
   el('sohbet').innerHTML = '';
   el('tehvil-netice').innerHTML = '';
+  el('muqayise-netice').innerHTML = '';
   sohbetId = null;
 }
 
@@ -124,6 +126,7 @@ async function neticeniGoster(analizId) {
     neticeniCiz(n);
     ragVeziyyeti(n.site_id);
     izlemeVeziyyeti(n.site_id);
+    muqayiseHazirla(n.site_id, n.domain);
     el('k-umumi').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (x) {
     gedisatSetri('xəta', 'Nəticə oxunmadı: ' + x, 'pis');
@@ -308,6 +311,59 @@ izleDugme.addEventListener('click', async () => {
   } finally {
     izleDugme.disabled = false;
     izleDugmeniYenile(null);
+  }
+});
+
+/* ---------------- müqayisə (Gün 13) ---------------- */
+
+const muqayiseDugme = el('d-muqayise');
+
+/* İkinci saytı bazadan seçirik: müqayisə üçün hər iki saytın analizi olmalıdır,
+   ona görə ünvan yazdırmaq yox, analiz olunmuşları siyahıya qoyuruq. */
+async function muqayiseHazirla(siteId, domain) {
+  el('muqayise-netice').innerHTML = '';
+  el('muqayise-cari').textContent = domain || '';
+
+  let saytlar = [];
+  try {
+    saytlar = await (await fetch('/api/sites')).json();
+  } catch { /* siyahı gəlməsə aşağıdakı səbəb yazılır */ }
+
+  const digerler = saytlar.filter((s) => s.id !== siteId);
+
+  if (digerler.length) {
+    el('muqayise-sayt').innerHTML = digerler.map((s) =>
+      `<option value="${tehlukesiz(s.id)}">${tehlukesiz(s.domain)}</option>`).join('');
+    gorset('muqayise-secim');
+  } else {
+    gizlet('muqayise-secim');
+    el('muqayise-netice').innerHTML = '<span class="teq">Müqayisə üçün ən azı iki ' +
+      'analiz olunmuş sayt lazımdır — başqa bir sayt analiz et</span>';
+  }
+  gorset('k-muqayise');
+}
+
+muqayiseDugme.addEventListener('click', async () => {
+  const ikinci = el('muqayise-sayt').value;
+  if (!cariSayt || !ikinci) return;
+
+  const kohne = muqayiseDugme.textContent;
+  muqayiseDugme.disabled = true;
+  muqayiseDugme.textContent = 'gedir…';
+  const netice = el('muqayise-netice');
+
+  try {
+    const cavab = await fetch(`/api/muqayise?sayt1=${cariSayt}&sayt2=${ikinci}`);
+    const m = await cavab.json();
+    // Sayt tapılmasa server 404 + `detail` qaytarır — səbəb olduğu kimi yazılır
+    netice.innerHTML = cavab.ok
+      ? muqayiseCedveli(m)
+      : `<span class="teq">${tehlukesiz(m.detail || cavab.status)}</span>`;
+  } catch (x) {
+    netice.innerHTML = `<span class="teq">Server cavab vermədi: ${tehlukesiz(x)}</span>`;
+  } finally {
+    muqayiseDugme.disabled = false;
+    muqayiseDugme.textContent = kohne;
   }
 });
 

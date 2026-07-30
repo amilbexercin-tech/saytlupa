@@ -107,11 +107,35 @@ def _profil(sayt: db.Sayt, analiz: db.Analiz | None) -> dict:
         "analitika_var": reklam.get("analitika_var"),
         # AI rəyi
         "meqsed": (analiz.ai_hesabat or {}).get("meqsed") if analiz else None,
+        # Məlumatın etibarlılığı — aşağıda hökm verilib-verilməyəcəyini həll edir
+        "qorunur": bool((xam.get("qoruma") or {}).get("qorunur")),
+        "qoruma_xidmeti": (xam.get("qoruma") or {}).get("xidmet") or "bot qoruması",
+        "js_ile_qurulur": bool((xam.get("js_sayt") or {}).get("js_ile_qurulur")),
+        "js_cerceve": (xam.get("js_sayt") or {}).get("cerceve") or "JS",
     }
+
+
+def _etibarsizliq(p: dict) -> str:
+    """Saytın öz məzmununa əsaslanan rəqəmlər niyə etibarsızdır — yoxdursa boş."""
+    if p["qorunur"]:
+        return (
+            f"{p['domain']} {p['qoruma_xidmeti']} arxasındadır — ölçülən rəqəmlər "
+            "yoxlama səhifəsinə aiddir, real sayta yox."
+        )
+    if p["js_ile_qurulur"]:
+        return (
+            f"{p['domain']} {p['js_cerceve']} ilə brauzerdə çəkilir — serverin "
+            "verdiyi HTML boş qabıqdır, ölçülən rəqəmlər real səhifəni göstərmir."
+        )
+    return ""
 
 
 # --------------------------------------------------------------- müqayisə
 
+
+# Saytın öz cavabından asılı OLMAYAN ölçülər: WHOIS və TLS əl dəyişməsi
+# saytın verdiyi HTML-dən asılı deyil, ona görə sayt bloklansa da etibarlıdır.
+KENAR_OLCULER = {"domen_yas_il", "sertifikat_qalan_gun"}
 
 # (açar, başlıq, "boyuk"/"kicik"/"" — hansı tərəf üstün sayılır)
 OLCULER = [
@@ -127,13 +151,17 @@ OLCULER = [
 ]
 
 
-def _ustun(acar: str, istiqamet: str, a, b) -> str:
+def _ustun(acar: str, istiqamet: str, a, b, etibarli: bool = True) -> str:
     """Hansı sayt bu ölçüdə üstündür.
 
-    'birinci' | 'ikinci' | 'beraber' | 'neytral' | 'bilinmir'.
+    'birinci' | 'ikinci' | 'beraber' | 'neytral' | 'bilinmir' | 'etibarsiz'.
     `neytral` — ölçünün yaxşı/pis istiqaməti yoxdur (məsələn şəkil sayı):
     fərqli olsalar da birini üstün saymaq düzgün olmazdı.
+    `etibarsiz` — tərəflərdən biri bloklanıb və ya brauzerdə çəkilir: rəqəm
+    real sayta aid deyil, ona görə hökm verilmir (bax `KENAR_OLCULER`).
     """
+    if not etibarli and acar not in KENAR_OLCULER:
+        return "etibarsiz"
     if a is None or b is None:
         return "bilinmir"
     if not istiqamet:
@@ -171,12 +199,17 @@ def muqayise_et(gosterici1: str, gosterici2: str) -> dict:
     p1 = _profil(sayt1, _son_analiz(sayt1.id))
     p2 = _profil(sayt2, _son_analiz(sayt2.id))
 
+    # Bir tərəf bloklanıbsa və ya brauzerdə çəkilirsə, saytın məzmunundan
+    # çıxarılan rəqəmlərlə "üstündür" yazmaq uydurma olar
+    xeberdarliqlar = [m for m in (_etibarsizliq(p1), _etibarsizliq(p2)) if m]
+    etibarli = not xeberdarliqlar
+
     olculer = [
         {
             "olcu": basliq,
             "birinci": p1[acar],
             "ikinci": p2[acar],
-            "ustun": _ustun(acar, istiqamet, p1[acar], p2[acar]),
+            "ustun": _ustun(acar, istiqamet, p1[acar], p2[acar], etibarli),
         }
         for acar, basliq, istiqamet in OLCULER
     ]
@@ -187,6 +220,7 @@ def muqayise_et(gosterici1: str, gosterici2: str) -> dict:
         "birinci": p1,
         "ikinci": p2,
         "olculer": olculer,
+        "xeberdarliqlar": xeberdarliqlar,
         "texnologiya": {
             "ortaq": sorted(t1 & t2),
             "yalniz_birinci": sorted(t1 - t2),
@@ -196,7 +230,7 @@ def muqayise_et(gosterici1: str, gosterici2: str) -> dict:
             p1["domain"]: _seo_ferqi(p1),
             p2["domain"]: _seo_ferqi(p2),
         },
-        "xulase": xulase_metni(p1, p2, olculer, t1, t2),
+        "xulase": xulase_metni(p1, p2, olculer, t1, t2, xeberdarliqlar),
     }
 
 
@@ -211,16 +245,27 @@ def _deyer(v) -> str:
     return str(v)
 
 
-def xulase_metni(p1: dict, p2: dict, olculer: list[dict], t1: set, t2: set) -> str:
+def xulase_metni(
+    p1: dict, p2: dict, olculer: list[dict], t1: set, t2: set,
+    xeberdarliqlar: list[str] | None = None,
+) -> str:
     """MCP alətinin qaytardığı oxunaqlı mətn (markdown cədvəli)."""
-    setirler = [
-        f"# {p1['domain']} ↔ {p2['domain']}",
-        "",
+    setirler = [f"# {p1['domain']} ↔ {p2['domain']}", ""]
+
+    # Xəbərdarlıq cədvəldən ƏVVƏL gəlir — rəqəmlərə baxmazdan qabaq oxunmalıdır
+    for mesaj in xeberdarliqlar or []:
+        setirler.append(f"> ⚠️ {mesaj}")
+    if xeberdarliqlar:
+        setirler += ["", "Bu səbəbdən saytın məzmununa əsaslanan ölçülərdə "
+                     "üstünlük hökmü verilmir (`—`).", ""]
+
+    setirler += [
         f"| Ölçü | {p1['domain']} | {p2['domain']} | Üstün |",
         "|---|---|---|---|",
     ]
     ad = {"birinci": p1["domain"], "ikinci": p2["domain"],
-          "beraber": "bərabər", "neytral": "—", "bilinmir": "—"}
+          "beraber": "bərabər", "neytral": "—", "bilinmir": "—",
+          "etibarsiz": "—"}
     for o in olculer:
         setirler.append(
             f"| {o['olcu']} | {_deyer(o['birinci'])} | {_deyer(o['ikinci'])} "

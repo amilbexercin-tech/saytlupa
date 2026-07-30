@@ -95,7 +95,13 @@ bağlıdırsa alət aydın mesaj qaytarır, susmur.
 `.env`-də `N8N_WEBHOOK_URL` doldurulsa, `sayt_analiz_et` analizi n8n Workflow 1
 üzərindən başladır.
 
-Müqayisə həm də REST-dədir: `GET /api/muqayise?sayt1=asan.gov.az&sayt2=kontakt.az`.
+Müqayisə həm REST-dədir (`GET /api/muqayise?sayt1=asan.gov.az&sayt2=kontakt.az`),
+həm də interfeysdə: analiz bitəndən sonra «⚖️ Başqa saytla müqayisə» kartı çıxır.
+
+Tərəflərdən biri bot qoruması arxasındadırsa və ya brauzerdə çəkilirsə, saytın
+məzmunundan çıxarılan ölçülərdə **üstünlük hökmü verilmir** — həmin rəqəmlər
+yoxlama səhifəsinə və ya boş qabığa aiddir. Yalnız domen yaşı və sertifikat
+(saytın cavabından asılı olmayan mənbələr) müqayisə olunur, səbəb isə yazılır.
 
 ## n8n — 4 workflow
 
@@ -169,12 +175,12 @@ n8n/              4 workflow JSON
 tests/            pytest
 docs/specs/       dizayn sənədi
 storage/          yığılan səhifələr, arşivlər, PDF-lər
-docs/ekran/       11 ekran görüntüsü (işləyən sistemdən)
+docs/ekran/       12 ekran görüntüsü (işləyən sistemdən)
 ```
 
 ## Vəziyyət
 
-> Son yenilənmə: **2026-07-30** · 187 test keçir · hər üç model qoşuludur
+> Son yenilənmə: **2026-07-30** · 192 test keçir · hər üç model qoşuludur
 > (Claude sonnet-5 · Gemini 3.6 flash · gemma3:4b)
 
 | Gün | İş | Status |
@@ -189,6 +195,7 @@ docs/ekran/       11 ekran görüntüsü (işləyən sistemdən)
 | 10 | n8n (4 workflow + Gemma agenti) + izləmə xidməti | ✅ |
 | 11 | MCP serveri (3 tool) + sayt müqayisəsi + testlər | ✅ |
 | 12 | Sənədləşdirmə + 10 ekran görüntüsü + model ölçməsi | ✅ |
+| 13 | Müqayisə səhifəsi (interfeys) + etibarsız məlumatda hökm verilməməsi | ✅ |
 
 ## Etik qeyd
 

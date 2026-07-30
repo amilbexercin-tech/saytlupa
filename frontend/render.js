@@ -243,6 +243,67 @@ async function sehifeSiyahisi(siteId) {
   } catch { /* səhifə siyahısı olmasa da nəticə göstərilir */ }
 }
 
+/* ---------------- müqayisə (Gün 13) ---------------- */
+
+/* `null` sıfır demək deyil — toplayıcı sahəni tapa bilməyib.
+   `muqayise._deyer()`-in JS qarşılığı: uydurma rəqəm yazılmır. */
+function mDeyer(deyer) {
+  if (deyer === null || deyer === undefined || deyer === '') return 'bilinmir';
+  if (deyer === true) return 'var';
+  if (deyer === false) return 'yox';
+  return String(deyer);
+}
+
+/* Yalnız `birinci`/`ikinci` vurğulanır. `neytral` (istiqaməti olmayan ölçü),
+   `beraber` və `bilinmir` vurğulanmır — birini üstün saymaq düzgün olmazdı. */
+function mOlcuSetri(o) {
+  const xana = (teref) => {
+    const ustun = o.ustun === teref;
+    return `<td${ustun ? ' class="ustun"' : ''}>` +
+           `${tehlukesiz(mDeyer(o[teref]))}${ustun ? ' ✓' : ''}</td>`;
+  };
+  return `<tr><td>${tehlukesiz(o.olcu)}</td>${xana('birinci')}${xana('ikinci')}</tr>`;
+}
+
+function mTeqSetri(ad, siyahi) {
+  return `<tr><td>${tehlukesiz(ad)}</td>
+    <td><div class="teqler">${teqler(siyahi)}</div></td></tr>`;
+}
+
+function muqayiseCedveli(m) {
+  const a = m.birinci.domain, b = m.ikinci.domain;
+  const t = m.texnologiya || {}, seo = m.seo_catismazliqlari || {};
+
+  /* Xəbərdarlıq cədvəldən əvvəl gəlir — rəqəmlərə baxmazdan qabaq oxunmalıdır */
+  const xeberdarliqlar = m.xeberdarliqlar || [];
+  const xeb = xeberdarliqlar.map(function (mesaj) {
+    return `<div class="xeb sari">⚠️ ${tehlukesiz(mesaj)}</div>`;
+  }).join('') + (xeberdarliqlar.length
+    ? '<p class="qeyd-setri">Bu səbəbdən saytın məzmununa əsaslanan ölçülərdə ' +
+      'üstünlük hökmü verilmir — yalnız domen yaşı və sertifikat müqayisə olunur.</p>'
+    : '');
+
+  return xeb + `<table class="m-cedvel">
+      <thead><tr>
+        <th>Ölçü</th><th>${tehlukesiz(a)}</th><th>${tehlukesiz(b)}</th>
+      </tr></thead>
+      <tbody>${(m.olculer || []).map(mOlcuSetri).join('')}</tbody>
+    </table>
+
+    <h3>Texnologiya</h3>
+    <table class="cedvel"><tbody>
+      ${mTeqSetri('Ortaq', t.ortaq)}
+      ${mTeqSetri('Yalnız ' + a, t.yalniz_birinci)}
+      ${mTeqSetri('Yalnız ' + b, t.yalniz_ikinci)}
+    </tbody></table>
+
+    <h3>SEO çatışmazlıqları</h3>
+    <table class="cedvel"><tbody>
+      ${mTeqSetri(a, seo[a])}
+      ${mTeqSetri(b, seo[b])}
+    </tbody></table>`;
+}
+
 /* ---------------- hamısı ---------------- */
 
 function neticeniCiz(n) {

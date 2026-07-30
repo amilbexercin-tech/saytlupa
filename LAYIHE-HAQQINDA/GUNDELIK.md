@@ -471,6 +471,54 @@ göründü, konsol xətası yoxdur (`docs/ekran/11-js-sayt.png`). `kontakt.az`
 
 ---
 
+## 2026-07-30 (davamı) — Gün 13: müqayisə səhifəsi
+
+Dizayn sənədinin §15-i («bu ay daxil olmayan») bu sətri saxlayırdı: *«Bir neçə
+saytın yan-yana müqayisə səhifəsi — MCP tool-u var, UI yoxdur»*. Bağlandı.
+
+### ✅ Bitən işlər
+
+| Nə | Harada |
+|---|---|
+| «⚖️ Başqa saytla müqayisə» kartı | `index.html`, `app.js`, `render.js`, `style.css` |
+| Etibarsız məlumatda üstünlük hökmünün verilməməsi | `muqayise.py` |
+| 5 yeni test (187 → **192**) | `tests/test_muqayise_etibar.py` |
+| Ekran görüntüsü | `docs/ekran/12-muqayise.png` |
+
+Backend-ə interfeys üçün bir sətir də əlavə olunmadı — `GET /api/sites` və
+`GET /api/muqayise` Gün 11-dən hazır idi. İkinci sayt açılan siyahıdan seçilir
+(analiz olunmuş saytlar), çünki müqayisə üçün hər ikisinin analizi lazımdır.
+Bazada başqa sayt yoxdursa siyahı gizlənir və səbəbi yazılır.
+
+### 🔴 İlk versiya yanlış idi — ekran görüntüsü göstərdi
+
+Cədvəl işə düşdü, amma `asan.gov.az ↔ kontakt.az` müqayisəsində kontakt.az
+**«Skript sayı 1 ✓»** və **«İzləyici 0 ✓»** ilə üstün göründü. Halbuki
+kontakt.az Cloudflare arxasındadır — o rəqəmlər yoxlama səhifəsinindir, real
+saytın deyil. Yəni interfeys bloklanmış saytı «daha yaxşı» elan edirdi.
+
+Bu, layihənin əsas qaydasını pozur: **uydurma rəqəm yazılmır**. Boş sahə
+buraxmaqdan pisdir, çünki yanlış nəticə inandırıcı görünür.
+
+Həll: `_profil()` artıq `qorunur` və `js_ile_qurulur` sahələrini də oxuyur.
+Tərəflərdən biri etibarsızdırsa, `_ustun()` **`etibarsiz`** qaytarır və heç nə
+vurğulanmır. İstisna `KENAR_OLCULER`-dir: domen yaşı (WHOIS) və sertifikat
+(TLS) saytın verdiyi HTML-dən asılı deyil, ona görə onlarda hökm qalır.
+
+**Yüklənmə vaxtı da etibarsız sayıldı.** İlk testi yazanda onu «etibarlı»
+qoymuşdum, sonra fikirləşdim: bloklanmış saytda ölçülən vaxt yoxlama
+səhifəsinin açılma vaxtıdır, real səhifənin yox. Test düzəldildi, sonra kod
+yazıldı.
+
+Xəbərdarlıq həm interfeysdə, həm MCP-nin markdown xülasəsində cədvəldən
+**əvvəl** gəlir — rəqəmlərə baxmazdan qabaq oxunmalıdır.
+
+Yoxlama: `asan.gov.az ↔ kontakt.az` (qorunan) → 1 hökm, 1 xəbərdarlıq;
+`asan.gov.az ↔ example.com` (adi) → 5 hökm, xəbərdarlıq yoxdur; konsol
+xətası yoxdur.
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama

@@ -207,8 +207,38 @@ button.ikinci { background: var(--kart2); color: var(--metn); border: 1px solid 
 
 .yuklenir { color: var(--solgun); font-size: 13.5px; }
 
+/* ---------- müqayisə ---------- */
+
+.muqayise-secim { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.muqayise-secim.gizli { display: none; }
+.cari-sayt { font-weight: 650; }
+.ox { color: var(--solgun); }
+
+select {
+  padding: 12px 14px; border-radius: 10px; border: 1px solid var(--kenar);
+  background: var(--fon); color: var(--metn); font-size: 14.5px; font-family: inherit;
+}
+select:focus { outline: 2px solid var(--vurgu); outline-offset: -1px; }
+
+.qeyd-setri { color: var(--solgun); font-size: 12.5px; margin: 8px 0 0; }
+
+.m-cedvel { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 18px; }
+.m-cedvel th {
+  text-align: left; padding: 7px 9px; font-size: 12px; font-weight: 650;
+  color: var(--solgun); border-bottom: 1px solid var(--kenar);
+}
+.m-cedvel td { padding: 7px 9px; border-bottom: 1px solid var(--kenar); }
+.m-cedvel th:first-child, .m-cedvel td:first-child { color: var(--solgun); width: 40%; }
+.m-cedvel tr:last-child td { border-bottom: 0; }
+/* Yalnız ölçünün yaxşı/pis istiqaməti olanda vurğulanır */
+.m-cedvel td.ustun { background: rgba(61, 220, 151, 0.14); font-weight: 650; }
+
 @media (max-width: 620px) {
   .axtar { flex-direction: column; }
   .zolaq-setir { grid-template-columns: 100px 1fr 58px; }
   .ad { min-width: 96px; }
+  .muqayise-secim { align-items: stretch; }
+  .m-cedvel { font-size: 12.5px; }
+  .m-cedvel th, .m-cedvel td { padding: 6px 4px; }
+  .m-cedvel th:first-child, .m-cedvel td:first-child { width: 34%; }
 }

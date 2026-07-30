@@ -198,7 +198,7 @@ müəllif hüququnu pozmaq, saytların istifadə şərtlərini pozmaq.
 
 ## 📊 HAZIRKI VƏZİYYƏT
 
-> Son yenilənmə: **2026-07-30** · 187 test keçir · ~7 500 sətir kod
+> Son yenilənmə: **2026-07-30** · 192 test keçir · ~7 700 sətir kod
 
 | Gün | İş | Vəziyyət |
 |---|---|---|
@@ -212,6 +212,7 @@ müəllif hüququnu pozmaq, saytların istifadə şərtlərini pozmaq.
 | 10 | **n8n**: 4 workflow + sayt izləmə xidməti | ✅ hazır |
 | 11 | **MCP** serveri (3 tool) + sayt müqayisəsi | ✅ hazır |
 | 12 | Sənədləşdirmə və cilalama | ✅ hazır |
+| 13 | Müqayisə səhifəsi (interfeys) + etibarsız məlumatda hökm verilməməsi | ✅ hazır |
 
 **Ölçülmüş nəticələr (hazırkı hissə üzrə):**
 
@@ -230,9 +231,9 @@ müəllif hüququnu pozmaq, saytların istifadə şərtlərini pozmaq.
 | İzləmə yoxlaması (30 səhifə, dəyişiklik yoxdur) | **11.4 saniyə** (`asan.gov.az`) |
 | Sayt müqayisəsi (`/api/muqayise`, hazır analizlər) | **2.4 saniyə** |
 | Gemma təsnifatı (n8n WF4, `gemma3:4b`) | **41.8 san** (soyuq) → **14.2 san** (model yaddaşda) |
-| Testlər | **187 keçir** |
+| Testlər | **192 keçir** |
 | Kod həcmi | ~7 400 sətir (backend + interfeys) · ayrıca ~2 300 sətir test və skript |
-| İnterfeys | 11 bölmə · açıq/qaranlıq rejim · mobil uyğun (yatay sürüşmə yoxdur) |
+| İnterfeys | 12 bölmə · açıq/qaranlıq rejim · mobil uyğun (yatay sürüşmə yoxdur) |
 
 > **İzləmə rəqəmi haqqında:** 11.4 saniyə — dəyişiklik **tapılmayan** haldır.
 > Dəyişiklik olanda üstünə RAG indeksinin yenidən qurulması əlavə olunur.
