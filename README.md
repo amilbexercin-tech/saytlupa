@@ -7,7 +7,8 @@ hesabat yazır, saytın məzmunu ilə **söhbət edə bilirsən** (mənbə göst
 istəsən saytın **müasir versiyasını** qurdurursan.
 
 > AI Engineering kursunun aylıq layihəsi. Dizayn sənədi:
-> [`docs/specs/2026-07-28-saytlupa-design.md`](docs/specs/2026-07-28-saytlupa-design.md)
+> [`docs/specs/2026-07-28-saytlupa-design.md`](docs/specs/2026-07-28-saytlupa-design.md) ·
+> gündəlik və qərarlar: [`LAYIHE-HAQQINDA/`](LAYIHE-HAQQINDA/)
 
 ---
 
@@ -198,6 +199,7 @@ docs/ekran/       13 ekran görüntüsü (işləyən sistemdən)
 | 11 | MCP serveri (3 tool) + sayt müqayisəsi + testlər | ✅ |
 | 12 | Sənədləşdirmə + 10 ekran görüntüsü + model ölçməsi | ✅ |
 | 13 | Müqayisə səhifəsi (interfeys) + etibarsız məlumatda hökm verilməməsi | ✅ |
+| 14 | Açıq/qaranlıq keçid düyməsi + opus ölçməsi + GitHub | ✅ |
 
 ## Etik qeyd
 

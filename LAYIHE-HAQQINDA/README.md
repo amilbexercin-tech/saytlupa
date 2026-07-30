@@ -213,6 +213,7 @@ müəllif hüququnu pozmaq, saytların istifadə şərtlərini pozmaq.
 | 11 | **MCP** serveri (3 tool) + sayt müqayisəsi | ✅ hazır |
 | 12 | Sənədləşdirmə və cilalama | ✅ hazır |
 | 13 | Müqayisə səhifəsi (interfeys) + etibarsız məlumatda hökm verilməməsi | ✅ hazır |
+| 14 | Açıq/qaranlıq keçid düyməsi + `claude-opus-5` ölçməsi + GitHub | ✅ hazır |
 
 **Ölçülmüş nəticələr (hazırkı hissə üzrə):**
 

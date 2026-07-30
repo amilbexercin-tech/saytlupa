@@ -567,11 +567,19 @@ Görüntü: `docs/ekran/13-opus-muasir.png`. Ölçmə zamanı sonnet faylı sili
 deyə əvvəlcədən ehtiyat nüsxə götürüldü — 4-cü ölçmədə Gemini faylı üzərinə
 yazıldığı üçün müqayisə edilə bilməmişdi, bu dəfə səhv təkrarlanmadı.
 
-### ⏳ Qalan
+### 🌍 GitHub
 
-GitHub repo — `gh auth login` istifadəçi tərəfindən edilməlidir (brauzerdə
-giriş). Sirr yoxlaması aparılıb: commit olunmuş fayllarda açar, token və ya
-şəxsi məlumat yoxdur; `.env` `.gitignore`-dadır, `.env.example` boşdur.
+Repo: <https://github.com/amilbexercin-tech/saytlupa> (public, 6 commit).
+
+Push-dan əvvəl sirr yoxlaması **işçi qovluqda deyil, bütün tarixçədə** aparıldı
+(`git log --all -p`) — açar, token, Telegram id və şəxsi məlumat tapılmadı.
+`.env` heç bir commit-də olmayıb, `.env.example`-in dəyərləri boşdur.
+Uzaqdan da təsdiqləndi: `contents/.env` → 404.
+
+**Tələ:** qabıq artefaktı olan boş fayllar (`5`, `(Claude`) commit-lərə
+qarışırdı. İkisi də boş olduğu üçün git birini o birinin «adı dəyişdirilmiş
+variantı» saydı. Ona görə push-dan əvvəl repodakı bütün boş fayllar ayrıca
+yoxlandı.
 
 ---
 
