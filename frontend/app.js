@@ -39,10 +39,9 @@ function butunBolmeleriGizlet() {
 
 const temaDugme = el('d-tema');
 
-/* `data-tema` yoxdursa sistemin rejimi işləyir — düymə yalnız onu üstələyir. */
+/* Standart rejim qaranlıqdır — dizayn qara fon üzərində qurulub. */
 function temaOxu() {
-  return document.documentElement.getAttribute('data-tema') ||
-    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'isiqli' : 'qaranliq');
+  return document.documentElement.getAttribute('data-tema') || 'qaranliq';
 }
 
 /* Düymədə keçiləcək rejimin işarəsi göstərilir, cari rejimin yox. */
@@ -88,6 +87,7 @@ dugme.addEventListener('click', async () => {
   qutuGedisat.classList.remove('gizli');
   butunBolmeleriGizlet();
   basla = Date.now();
+  efektMatrix(true);   // arxa fon matrix rejiminə keçir
 
   let cavab;
   try {
@@ -160,6 +160,7 @@ async function neticeniGoster(analizId) {
 function bitir(xeta) {
   dugme.disabled = false;
   dugme.textContent = 'Analiz et';
+  efektMatrix(false);  // matrix sönür, sakit fona qayıdır
   if (xeta) gedisatSetri('xəta', xeta, 'pis');
 }
 

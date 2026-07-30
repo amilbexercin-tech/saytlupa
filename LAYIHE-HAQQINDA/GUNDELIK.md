@@ -623,6 +623,53 @@ dəqiqə) — 14 dəyər saniyəyə çevrildi.
 
 ---
 
+## 2026-07-30 (davamı) — İnterfeysin canlı dizaynı
+
+Amil interfeysi «müasir və möhtəşəm» görkəmə keçirməyi istədi: qara canlı arxa
+fon, 3D dərinlik, yazıların üzərinə gələndə hərəkət, analiz başlayanda isə
+**matrix** fonu.
+
+### 🎨 Nə edildi
+
+| Nə | Harada |
+|---|---|
+| Canlı arxa fon (qara + üzən işıq + perspektivli şəbəkə) | `efekt.js` — **yeni**, 188 sətir |
+| Matrix rejimi (analiz gedərkən düşən simvol yağışı) | `efekt.js` |
+| Kartların mausa görə 3D əyilməsi + parıltı | `efekt.js` + `style.css` |
+| Başlıq, cədvəl sətri, teq, qutu, düymə — `translateZ` hərəkətləri | `style.css` |
+| Matrix-in analiz axınına qoşulması | `app.js` (2 sətir) |
+
+### 🧭 Qərarlar
+
+**Kitabxana işlədilmədi.** `three.js` təklif olunmuşdu, amma layihənin qaydası
+«xarici fayl və şrift yüklənmir»dir və maşında 7.8 GB RAM var. Bütün effektlər
+CSS 3D + bir `<canvas>` ilə quruldu — nəticə offline açılır, proyektorda
+ilişmir. Matrix yağışı 60 sətirdən azdır.
+
+**Simvollar Azərbaycan əlifbasındandır.** Katakana klişedir; burada `0/1`, kod
+işarələri və `ƏĞİÖŞÜÇ` yağır — alət Azərbaycan saytlarını analiz edir.
+
+**Standart rejim qaranlığa keçdi.** Fon artıq həmişə qaradır, ona görə sistemin
+işıqlı rejimini izləmək mənasız idi: ağ panel qara lövhənin üstündə kəskin
+görünürdü. İndi standart qaranlıqdır, işıqlı rejim düymə ilə açılır (qara lövhə
+qalır, panellər açılır — işıq qutusu görünüşü).
+
+**Mətn oxunaqlı qaldı.** AI hesabat, məzmun, səhifə siyahısı və müqayisə
+kartları `backdrop-filter` ilə bulanıq örtük alır — fon uzun mətnlə vuruşmur.
+Matrix onsuz da yalnız analiz gedərkən, yəni oxunacaq hesabat hələ yoxkən
+işləyir.
+
+### 🛡️ Qoruyucular
+
+`prefers-reduced-motion` seçilibsə bütün hərəkət sönür; tab arxa plana keçəndə
+kadrlar dayanır (CPU/batareya); piksel sıxlığı 2 ilə məhdudlaşır; toxunma
+ekranlarda kart əyilməsi işləmir; kadr sürəti 30-a bağlanıb.
+
+Yoxlandı: hər iki rejim, matrix açıq/bağlı, 13 kart görünür, konsol xətası
+yoxdur. Görüntü: `docs/ekran/16-dizayn-netice.png`.
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama

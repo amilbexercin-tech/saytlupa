@@ -18,39 +18,46 @@
   --sari: #ffc857;
   --qirmizi: #ff6b6b;
   --radius: 14px;
+  /* Kartdan kənarda — qara lövhənin üstündə — mətn hər iki temada açıqdır */
+  --ust-metn: #eef1f8;
+  --ust-solgun: #9aa4ba;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-tema="qaranliq"]) {
-    --fon: #f5f6fa;
-    --kart: #ffffff;
-    --kart2: #f0f2f7;
-    --kenar: #e2e5ee;
-    --metn: #14161d;
-    --solgun: #5c6478;
-  }
-}
-
+/* Dizayn qara fon üzərində qurulub, ona görə standart rejim qaranlıqdır —
+   sistemin seçimi izlənmir. İşıqlı rejim yalnız düymə ilə açılır: qara lövhə
+   qalır, panellər açıq olur (işıq qutusu görünüşü). */
 :root[data-tema="isiqli"] {
-  --fon: #f5f6fa;
-  --kart: #ffffff;
-  --kart2: #f0f2f7;
-  --kenar: #e2e5ee;
+  --fon: #eef0f6;
+  --kart: #f7f8fc;
+  --kart2: #e9ecf4;
+  --kenar: #cfd5e4;
   --metn: #14161d;
   --solgun: #5c6478;
 }
 
 * { box-sizing: border-box; }
 
+/* Arxa fon həmişə qaradır — canlı lövhə (`efekt.js`) onun üstündə çəkilir.
+   Tema düyməsi panelləri və mətni dəyişir, fonu yox. */
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: var(--fon);
+  background: #05060a;
   color: var(--metn);
   line-height: 1.55;
 }
 
-.qab { max-width: 1000px; margin: 0 auto; padding: 40px 20px 80px; }
+#fon {
+  position: fixed; inset: 0; z-index: -1;
+  display: block; pointer-events: none;
+}
+
+/* Bütün məzmun lövhənin üstündə, öz perspektiv sahəsində */
+.qab {
+  position: relative;
+  max-width: 1000px; margin: 0 auto; padding: 40px 20px 80px;
+  perspective: 1400px;
+}
 
 .baslik { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .tema-dugme {
@@ -58,21 +65,62 @@ body {
   background: var(--kart2); color: var(--metn); border: 1px solid var(--kenar);
 }
 
-h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.5px; }
+/* Başlıq lövhənin üstündədir — rəngi temadan asılı deyil */
+h1 {
+  font-size: 34px; margin: 0 0 4px; letter-spacing: -0.8px;
+  color: var(--ust-metn);
+  text-shadow: 0 2px 24px rgba(79, 140, 255, 0.28);
+}
 h2 { font-size: 17px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
 h3 { font-size: 14px; margin: 18px 0 8px; color: var(--solgun); font-weight: 600; }
-.alt { color: var(--solgun); margin: 0 0 28px; }
+.alt { color: var(--ust-solgun); margin: 0 0 28px; }
 
 /* ---------- kartlar ---------- */
 
+/* Kart üç qatdan ibarətdir: yarımşəffaf panel, kənarda incə işıq (`::before`)
+   və mausu izləyən parıltı (`::after`). `--rx/--ry` dəyərlərini `efekt.js`
+   qoyur; yoxdursa kart düz dayanır. */
 .kart {
+  position: relative;
   background: var(--kart);
   border: 1px solid var(--kenar);
   border-radius: var(--radius);
   padding: 20px;
   margin-bottom: 16px;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1),
+              box-shadow 0.25s ease, border-color 0.25s ease;
+  box-shadow: 0 18px 50px -28px rgba(0, 0, 0, 0.9);
+  animation: kartGelir 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 .kart.gizli { display: none; }
+
+.kart:hover {
+  border-color: color-mix(in srgb, var(--vurgu) 45%, var(--kenar));
+  box-shadow: 0 26px 60px -26px rgba(0, 0, 0, 0.95),
+              0 0 0 1px color-mix(in srgb, var(--vurgu) 18%, transparent);
+}
+
+/* Mausun altında yumşaq parıltı */
+.kart::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+  background: radial-gradient(320px circle at var(--isiq-x, 50%) var(--isiq-y, 50%),
+              color-mix(in srgb, var(--vurgu) 14%, transparent), transparent 65%);
+}
+.kart:hover::after { opacity: 1; }
+
+@keyframes kartGelir {
+  from { opacity: 0; transform: translateY(18px) rotateX(-3deg); }
+  to   { opacity: 1; transform: translateY(0) rotateX(var(--rx, 0deg)); }
+}
+
+/* Uzun mətn kartları: fon mətnlə vuruşmasın, arxa örtük bulanır */
+#k-hesabat, #k-mezmun, #k-sehifeler, #k-muqayise {
+  backdrop-filter: blur(14px) saturate(1.1);
+  background: color-mix(in srgb, var(--kart) 88%, transparent);
+}
 
 /* ---------- axtarış ---------- */
 
@@ -226,6 +274,80 @@ button.ikinci { background: var(--kart2); color: var(--metn); border: 1px solid 
 .xeb.sari { background: rgba(255, 200, 87, 0.12); color: var(--sari); border-color: rgba(255, 200, 87, 0.3); }
 
 .yuklenir { color: var(--solgun); font-size: 13.5px; }
+
+/* ---------- dərinlik və hərəkət ---------- */
+
+/* Kartın içindəki hər şey öz 3D sahəsində yaşayır ki, `translateZ` işləsin */
+.kart > * { transform-style: preserve-3d; }
+
+/* Bölmə başlığı üzərinə gələndə irəli çıxıb işıqlanır */
+.kart h2 {
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1), color 0.28s ease;
+  cursor: default;
+}
+.kart h2:hover {
+  transform: translateZ(28px) translateX(3px);
+  color: var(--vurgu);
+}
+
+/* Cədvəl sətirləri: üzərinə gələndə qabağa çıxır */
+.cedvel tr, .m-cedvel tbody tr {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.cedvel tr:hover, .m-cedvel tbody tr:hover {
+  transform: translateZ(14px);
+  background: color-mix(in srgb, var(--vurgu) 8%, transparent);
+}
+
+/* Teqlər tək-tək qalxır */
+.teq {
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.3, 1),
+              border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.teq:hover {
+  transform: translateZ(20px) translateY(-2px);
+  border-color: var(--vurgu);
+  box-shadow: 0 8px 20px -10px rgba(79, 140, 255, 0.75);
+}
+
+/* Ölçü qutuları — ən çox baxılan yer, ona görə ən aydın reaksiya */
+.qutu {
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.25s ease;
+}
+.qutu:hover {
+  transform: translateZ(34px) scale(1.03);
+  box-shadow: 0 18px 36px -18px rgba(0, 0, 0, 0.85);
+}
+
+/* Düymələr basılanda içəri gedir */
+button {
+  transition: transform 0.16s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 8px 18px -10px rgba(79, 140, 255, 0.8);
+}
+button:hover:not(:disabled) { transform: translateZ(16px) translateY(-1px); filter: brightness(1.08); }
+button:active:not(:disabled) { transform: translateZ(0) translateY(1px); box-shadow: none; }
+
+/* Gedişat sətirləri axına uyğun sürüşərək gəlir */
+.setir { animation: setirGelir 0.32s ease both; }
+@keyframes setirGelir {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Analiz gedərkən gedişat kartı matrix fonunda daha kontrast olur */
+#gedisat {
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--kart) 82%, transparent);
+}
+
+/* Hərəkət istənmirsə hamısı sönür — qoruyucu */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    transition-duration: 0.001s !important;
+  }
+  .kart { transform: none !important; }
+}
 
 /* ---------- müqayisə ---------- */
 
