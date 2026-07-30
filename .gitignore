@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+data/
+storage/
+*.db
+*.sqlite3
+.DS_Store
+.gstack/

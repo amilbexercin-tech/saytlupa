@@ -1,0 +1,42 @@
+# --- Veb çərçivə ---
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+sse-starlette
+
+# --- Verilənlər bazası ---
+sqlalchemy
+psycopg2-binary
+pgvector
+alembic
+
+# --- Keş ---
+redis
+
+# --- LangChain / LLM ---
+langchain
+langchain-core
+langchain-anthropic
+langchain-google-genai
+langchain-ollama
+
+# --- Analiz / toplama ---
+httpx
+beautifulsoup4
+lxml
+dnspython
+python-whois
+tldextract
+
+# --- Hesabat ---
+reportlab
+
+# --- MCP ---
+mcp
+
+# --- Testlər ---
+pytest
+pytest-asyncio
+respx

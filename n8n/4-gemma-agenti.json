@@ -1,0 +1,229 @@
+{
+  "name": "SaytLupa 4 — Gemma agenti",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "saytlupa-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf4-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-880, 300],
+      "webhookId": "8f2c1a10-3333-4a10-9a01-saytlupa0004"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sual: {{ $json.body.sual }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Sən təsnifatçısan. İstifadəçinin sualını oxu və YALNIZ JSON qaytar — izahat, giriş sözü, markdown yazma.\n\nSxem:\n{\"niyyet\": \"analiz\" | \"sohbet\" | \"siyahi\", \"sayt_url\": \"\", \"site_id\": null}\n\nQaydalar:\n- \"analiz\" — istifadəçi YENİ bir saytın linkini verib analiz istəyir; sayt_url doldurulur\n- \"sohbet\" — artıq analiz edilmiş saytın məzmunu haqqında sual verir\n- \"siyahi\" — bazada hansı saytların olduğunu soruşur\n\nNümunələr:\nSual: \"https://asan.gov.az saytını analiz et\"\n{\"niyyet\":\"analiz\",\"sayt_url\":\"https://asan.gov.az\",\"site_id\":null}\n\nSual: \"hansı saytlar var?\"\n{\"niyyet\":\"siyahi\",\"sayt_url\":\"\",\"site_id\":null}\n\nSual: \"bu saytda hansı xidmətlər göstərilir?\"\n{\"niyyet\":\"sohbet\",\"sayt_url\":\"\",\"site_id\":null}"
+            }
+          ]
+        }
+      },
+      "id": "wf4-tesnifat",
+      "name": "Gemma — təsnifat",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [-640, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemma3:4b",
+        "options": { "temperature": 0 }
+      },
+      "id": "wf4-ollama",
+      "name": "Ollama — Gemma 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [-600, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemma bəzən JSON-u ``` içində və ya izahatla birlikdə qaytarır —\n// ona görə cavabdan JSON hissəsini kəsib oxuyuruq.\nconst xam = $json.text || '';\nconst govde = $('Webhook').first().json.body || {};\n\nlet n = {};\ntry {\n  const temiz = xam.replace(/```json/gi, '').replace(/```/g, '').trim();\n  const bas = temiz.indexOf('{');\n  const son = temiz.lastIndexOf('}');\n  if (bas >= 0 && son > bas) n = JSON.parse(temiz.slice(bas, son + 1));\n} catch (e) {\n  n = {};\n}\n\nconst icaze = ['analiz', 'sohbet', 'siyahi'];\nconst niyyet = icaze.includes(n.niyyet) ? n.niyyet : 'namelum';\n\nreturn [{\n  json: {\n    niyyet,\n    sual: govde.sual || '',\n    sayt_url: n.sayt_url || govde.url || '',\n    // site_id: əvvəlcə sorğudakı, sonra modelin tapdığı, sonra ilk sayt\n    site_id: govde.site_id || n.site_id || 1,\n    xam_cavab: xam,\n  },\n}];"
+      },
+      "id": "wf4-oxu",
+      "name": "Cavabı oxu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "wf4-r1",
+                    "leftValue": "={{ $json.niyyet }}",
+                    "rightValue": "analiz",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "analiz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "wf4-r2",
+                    "leftValue": "={{ $json.niyyet }}",
+                    "rightValue": "sohbet",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "sohbet"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "wf4-r3",
+                    "leftValue": "={{ $json.niyyet }}",
+                    "rightValue": "siyahi",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "siyahi"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "namelum"
+        }
+      },
+      "id": "wf4-switch",
+      "name": "Yönləndir",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-180, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/analyze",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ url: $json.sayt_url, max_sehife: 10 }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "wf4-analiz",
+      "name": "Yeni sayt analiz et",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 120],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8000/api/sites/{{ $json.site_id }}/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sual: $json.sual }) }}",
+        "options": { "timeout": 180000 }
+      },
+      "id": "wf4-chat",
+      "name": "Saytla danış",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/sites",
+        "options": { "timeout": 20000 }
+      },
+      "id": "wf4-siyahi",
+      "name": "Saytları göstər",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 480],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Üç budağın nəticəsini bir cavaba çevirir.\nconst oxu = $('Cavabı oxu').first().json;\nconst gelenler = $input.all().map((i) => i.json);\nconst ilk = gelenler[0] || {};\n\nlet cavab;\nswitch (oxu.niyyet) {\n  case 'siyahi':\n    cavab = gelenler.length\n      ? gelenler.map((s) => `${s.id} — ${s.domain}`).join('\\n')\n      : 'Bazada hələ analiz edilmiş sayt yoxdur.';\n    break;\n  case 'analiz':\n    cavab = ilk.analiz_id\n      ? `Analiz başladı: ${ilk.url} (analiz_id ${ilk.analiz_id}). Bitəndən sonra sual verə bilərsən.`\n      : `Analiz başlamadı: ${ilk.message || 'naməlum səbəb'}`;\n    break;\n  case 'sohbet':\n    cavab = ilk.cavab || `Cavab alınmadı: ${ilk.message || 'naməlum səbəb'}`;\n    break;\n  default:\n    cavab =\n      'Sualı təsnif edə bilmədim. Nümunələr: \"hansı saytlar var?\", ' +\n      '\"https://example.com analiz et\", \"bu saytda hansı xidmətlər var?\"';\n}\n\nreturn [{ json: { niyyet: oxu.niyyet, cavab } }];"
+      },
+      "id": "wf4-yig",
+      "name": "Cavabı yığ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ niyyet: $json.niyyet, cavab: $json.cavab }) }}",
+        "options": {}
+      },
+      "id": "wf4-cavab",
+      "name": "Cavab qaytar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [540, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Gemma — təsnifat", "type": "main", "index": 0 }]] },
+    "Gemma — təsnifat": { "main": [[{ "node": "Cavabı oxu", "type": "main", "index": 0 }]] },
+    "Ollama — Gemma 3": {
+      "ai_languageModel": [
+        [{ "node": "Gemma — təsnifat", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Cavabı oxu": { "main": [[{ "node": "Yönləndir", "type": "main", "index": 0 }]] },
+    "Yönləndir": {
+      "main": [
+        [{ "node": "Yeni sayt analiz et", "type": "main", "index": 0 }],
+        [{ "node": "Saytla danış", "type": "main", "index": 0 }],
+        [{ "node": "Saytları göstər", "type": "main", "index": 0 }],
+        [{ "node": "Cavabı yığ", "type": "main", "index": 0 }]
+      ]
+    },
+    "Yeni sayt analiz et": { "main": [[{ "node": "Cavabı yığ", "type": "main", "index": 0 }]] },
+    "Saytla danış": { "main": [[{ "node": "Cavabı yığ", "type": "main", "index": 0 }]] },
+    "Saytları göstər": { "main": [[{ "node": "Cavabı yığ", "type": "main", "index": 0 }]] },
+    "Cavabı yığ": { "main": [[{ "node": "Cavab qaytar", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

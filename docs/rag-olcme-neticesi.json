@@ -1,0 +1,18 @@
+[
+  {
+    "menbe": "yox",
+    "sual_sayi": 10,
+    "hit1": 8,
+    "hit3": 10,
+    "mrr": 0.9,
+    "orta_vaxt": 1.8
+  },
+  {
+    "menbe": "gemini",
+    "sual_sayi": 10,
+    "hit1": 10,
+    "hit3": 10,
+    "mrr": 1.0,
+    "orta_vaxt": 7.3
+  }
+]

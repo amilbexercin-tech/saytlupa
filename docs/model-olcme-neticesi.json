@@ -1,0 +1,29 @@
+[
+  {
+    "model": "gemma4:12b",
+    "orta_vaxt": 99.12,
+    "orta_sehv": null,
+    "duzgun": 0,
+    "cemi": 8,
+    "cavabsiz": 8,
+    "deqiqlik_faiz": 0
+  },
+  {
+    "model": "gemma3:1b",
+    "orta_vaxt": 4.64,
+    "orta_sehv": 3.17,
+    "duzgun": 4,
+    "cemi": 8,
+    "cavabsiz": 2,
+    "deqiqlik_faiz": 50
+  },
+  {
+    "model": "gemma3:4b",
+    "orta_vaxt": 7.61,
+    "orta_sehv": 0.5,
+    "duzgun": 8,
+    "cemi": 8,
+    "cavabsiz": 0,
+    "deqiqlik_faiz": 100
+  }
+]

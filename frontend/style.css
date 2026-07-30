@@ -1,0 +1,214 @@
+/* SaytLupa — interfeys üslubu.
+   Açıq və qaranlıq rejim dəstəklənir; xarici fayl və şrift yüklənmir. */
+
+:root {
+  --fon: #0f1117;
+  --kart: #171a22;
+  --kart2: #1e222c;
+  --kenar: #2a2f3d;
+  --metn: #e6e8ee;
+  --solgun: #98a1b3;
+  --vurgu: #4f8cff;
+  --yasil: #3ddc97;
+  --sari: #ffc857;
+  --qirmizi: #ff6b6b;
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --fon: #f5f6fa;
+    --kart: #ffffff;
+    --kart2: #f0f2f7;
+    --kenar: #e2e5ee;
+    --metn: #14161d;
+    --solgun: #5c6478;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--fon);
+  color: var(--metn);
+  line-height: 1.55;
+}
+
+.qab { max-width: 1000px; margin: 0 auto; padding: 40px 20px 80px; }
+
+h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.5px; }
+h2 { font-size: 17px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+h3 { font-size: 14px; margin: 18px 0 8px; color: var(--solgun); font-weight: 600; }
+.alt { color: var(--solgun); margin: 0 0 28px; }
+
+/* ---------- kartlar ---------- */
+
+.kart {
+  background: var(--kart);
+  border: 1px solid var(--kenar);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.kart.gizli { display: none; }
+
+/* ---------- axtarış ---------- */
+
+.axtar { display: flex; gap: 10px; }
+input[type="url"], input[type="text"] {
+  flex: 1; padding: 13px 16px; border-radius: 10px;
+  border: 1px solid var(--kenar); background: var(--fon);
+  color: var(--metn); font-size: 15px; font-family: inherit;
+}
+input:focus { outline: 2px solid var(--vurgu); outline-offset: -1px; }
+
+button {
+  padding: 13px 22px; border: 0; border-radius: 10px;
+  background: var(--vurgu); color: #fff; font-size: 15px;
+  font-weight: 600; cursor: pointer; font-family: inherit;
+}
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.ikinci { background: var(--kart2); color: var(--metn); border: 1px solid var(--kenar); }
+
+/* ---------- vəziyyət nişanları ---------- */
+
+.veziyyet { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.nisan {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+  color: var(--solgun); border: 1px solid var(--kenar);
+  border-radius: 999px; padding: 5px 11px;
+}
+.nöqtə { width: 7px; height: 7px; border-radius: 50%; background: var(--solgun); }
+.var { background: var(--yasil); } .yox { background: var(--qirmizi); }
+
+/* ---------- gedişat ---------- */
+
+/* Gedişat uzun olur (hər səhifə + hər RAG addımı) — səhifəni boğmasın */
+#setirler { max-height: 260px; overflow-y: auto; }
+
+.setir {
+  display: flex; gap: 10px; align-items: baseline; font-size: 13px;
+  padding: 5px 0; border-bottom: 1px solid var(--kenar);
+}
+.setir:last-child { border-bottom: 0; }
+.vaxt { color: var(--solgun); font-variant-numeric: tabular-nums; min-width: 46px; }
+.ad { font-weight: 600; min-width: 130px; }
+.link { color: var(--solgun); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ok { color: var(--yasil); } .pis { color: var(--qirmizi); }
+
+/* ---------- nəticə şəbəkəsi ---------- */
+
+.setka { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+
+.qutu {
+  background: var(--kart2); border: 1px solid var(--kenar);
+  border-radius: 10px; padding: 13px 15px;
+}
+.qutu .etiket { font-size: 11.5px; color: var(--solgun); text-transform: uppercase; letter-spacing: 0.5px; }
+.qutu .deyer { font-size: 19px; font-weight: 650; margin-top: 3px; word-break: break-word; }
+.qutu .qeyd { font-size: 12px; color: var(--solgun); margin-top: 3px; }
+
+/* ---------- cədvəl ---------- */
+
+.cedvel { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.cedvel td { padding: 7px 0; border-bottom: 1px solid var(--kenar); vertical-align: top; }
+.cedvel td:first-child { color: var(--solgun); width: 42%; padding-right: 14px; }
+.cedvel tr:last-child td { border-bottom: 0; }
+
+/* ---------- teqlər ---------- */
+
+.teqler { display: flex; flex-wrap: wrap; gap: 7px; }
+.teq {
+  font-size: 12.5px; padding: 5px 11px; border-radius: 8px;
+  background: var(--kart2); border: 1px solid var(--kenar);
+}
+.teq.mavi { border-color: var(--vurgu); color: var(--vurgu); }
+
+/* ---------- qrafik ---------- */
+
+.qrafik { display: flex; flex-direction: column; gap: 10px; }
+.zolaq-setir { display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px; align-items: center; font-size: 13px; }
+/* Hər ikisi `<span>`-dır: `display:block` olmasa en və hündürlük tətbiq olunmur
+   (inline elementlərdə bu xassələr işləmir) və zolaq görünməz qalır. */
+.zolaq-fon {
+  display: block; height: 9px; background: var(--kart2);
+  border-radius: 5px; overflow: hidden;
+}
+.zolaq {
+  display: block; height: 100%; border-radius: 5px;
+  background: var(--vurgu); transition: width 0.5s ease;
+}
+.zolaq.yaxsi { background: var(--yasil); }
+.zolaq.orta { background: var(--sari); }
+.zolaq.pis { background: var(--qirmizi); }
+.zolaq-deyer { text-align: right; color: var(--solgun); font-variant-numeric: tabular-nums; }
+
+/* ---------- rəng palitrası ---------- */
+
+.palitra { display: flex; flex-wrap: wrap; gap: 10px; }
+.reng { text-align: center; font-size: 11px; color: var(--solgun); }
+.reng .numune {
+  width: 58px; height: 58px; border-radius: 10px;
+  border: 1px solid var(--kenar); margin-bottom: 5px;
+}
+
+/* ---------- AI hesabat ---------- */
+
+.hesabat-bend { margin-bottom: 18px; }
+.hesabat-bend:last-child { margin-bottom: 0; }
+.hesabat-bend p { margin: 0; font-size: 14.5px; }
+.hesabat-bend ul { margin: 0; padding-left: 20px; font-size: 14.5px; }
+.hesabat-bend li { margin-bottom: 5px; }
+
+/* ---------- təhvil düymələri ---------- */
+
+.dugmeler { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 4px; }
+.dugmeler button { padding: 11px 16px; font-size: 14px; }
+
+.tehvil-setir {
+  background: var(--kart2); border: 1px solid var(--kenar);
+  border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 13.5px;
+}
+.tehvil-setir .basliq { font-weight: 650; margin-bottom: 4px; }
+.tehvil-setir p { margin: 0 0 6px; }
+.tehvil-setir p:last-child { margin: 0; }
+.tehvil-setir a { color: var(--vurgu); text-decoration: none; margin-right: 14px; }
+.tehvil-setir a:hover { text-decoration: underline; }
+.tehvil-setir code, .olcme-qeyd code {
+  background: var(--fon); border: 1px solid var(--kenar); border-radius: 6px;
+  padding: 2px 6px; font-size: 12.5px; word-break: break-all;
+}
+.tehvil-setir.pis-fon {
+  background: rgba(255, 200, 87, 0.1); border-color: rgba(255, 200, 87, 0.3);
+}
+
+/* ---------- söhbət ---------- */
+
+.sohbet { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; max-height: 460px; overflow-y: auto; }
+.mesaj { padding: 11px 14px; border-radius: 12px; font-size: 14px; max-width: 88%; }
+.mesaj.men { background: var(--vurgu); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.mesaj.bot { background: var(--kart2); border: 1px solid var(--kenar); align-self: flex-start; border-bottom-left-radius: 4px; }
+.mesaj.bot p { margin: 0 0 8px; } .mesaj.bot p:last-child { margin: 0; }
+.menbeler { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--kenar); font-size: 12px; }
+.menbeler a { color: var(--vurgu); text-decoration: none; display: block; margin-bottom: 3px; }
+.menbeler a:hover { text-decoration: underline; }
+.olcme-qeyd { font-size: 11.5px; color: var(--solgun); margin-top: 7px; }
+
+/* ---------- xəbərdarlıq ---------- */
+
+.xeb {
+  padding: 12px 14px; border-radius: 10px; font-size: 13.5px; margin-top: 12px;
+  background: rgba(255, 107, 107, 0.12); color: var(--qirmizi);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+.xeb.sari { background: rgba(255, 200, 87, 0.12); color: var(--sari); border-color: rgba(255, 200, 87, 0.3); }
+
+.yuklenir { color: var(--solgun); font-size: 13.5px; }
+
+@media (max-width: 620px) {
+  .axtar { flex-direction: column; }
+  .zolaq-setir { grid-template-columns: 100px 1fr 58px; }
+  .ad { min-width: 96px; }
+}

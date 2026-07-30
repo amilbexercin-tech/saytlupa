@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SaytLupa — Sayt Analiz və Söhbət Agenti</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div class="qab">
+
+  <h1>🔍 SaytLupa</h1>
+  <p class="alt">Link yaz → saytı tanı → saytla danış → daha yaxşısını qur.</p>
+
+  <!-- ---------------- axtarış ---------------- -->
+  <div class="kart">
+    <div class="axtar">
+      <input id="url" type="url" placeholder="https://numune-sayt.com" autocomplete="url" />
+      <button id="analiz">Analiz et</button>
+    </div>
+    <div class="veziyyet" id="veziyyet"><span class="nisan">yoxlanılır…</span></div>
+  </div>
+
+  <!-- ---------------- gedişat ---------------- -->
+  <div class="kart gizli" id="gedisat">
+    <h2>⏳ Gedişat</h2>
+    <div id="setirler"></div>
+  </div>
+
+  <!-- ---------------- xəbərdarlıq ---------------- -->
+  <div id="xeberdarliq"></div>
+
+  <!-- ---------------- ümumi baxış ---------------- -->
+  <div class="kart gizli" id="k-umumi">
+    <h2>🏷️ Ümumi baxış</h2>
+    <div class="setka" id="umumi"></div>
+  </div>
+
+  <!-- ---------------- AI hesabat ---------------- -->
+  <div class="kart gizli" id="k-hesabat">
+    <h2>🤖 AI hesabat</h2>
+    <div id="hesabat"></div>
+  </div>
+
+  <!-- ---------------- təhvil (Gün 9) ---------------- -->
+  <div class="kart gizli" id="k-tehvil">
+    <h2>🛠️ Təhvil</h2>
+    <div class="dugmeler">
+      <button class="ikinci" id="d-muasir">⚡ Müasir versiyanı qur</button>
+      <button class="ikinci" id="d-klon">🧬 Tam klon üçün hazırla</button>
+      <button class="ikinci" id="d-arsiv">📦 Səhifə arşivi</button>
+      <button class="ikinci" id="d-pdf">📄 PDF hesabat</button>
+      <button class="ikinci" id="d-izle">🔔 Bu saytı izlə</button>
+    </div>
+    <div id="tehvil-netice"></div>
+    <div class="olcme-qeyd">
+      Arşiv və klon hazırlığı öyrənmə məqsədlidir: <code>robots.txt</code> yoxlanılır,
+      xarici skriptlər arşivə salınmır, tapılmayan məlumat uydurulmur.
+    </div>
+  </div>
+
+  <!-- ---------------- söhbət ---------------- -->
+  <div class="kart gizli" id="k-sohbet">
+    <h2>💬 Saytla söhbət</h2>
+    <div class="sohbet" id="sohbet"></div>
+    <div class="axtar">
+      <input id="sual" type="text" placeholder="Məsələn: çatdırılma neçə gün çəkir?" />
+      <button id="gonder">Soruş</button>
+    </div>
+    <div class="olcme-qeyd" id="rag-veziyyet"></div>
+  </div>
+
+  <!-- ---------------- texnologiya ---------------- -->
+  <div class="kart gizli" id="k-texno">
+    <h2>🔧 Texnologiyalar</h2>
+    <div class="teqler" id="texno"></div>
+    <div id="texno-cedvel"></div>
+  </div>
+
+  <!-- ---------------- server ---------------- -->
+  <div class="kart gizli" id="k-server">
+    <h2>🌐 Server və hosting</h2>
+    <table class="cedvel"><tbody id="server"></tbody></table>
+  </div>
+
+  <!-- ---------------- performans ---------------- -->
+  <div class="kart gizli" id="k-performans">
+    <h2>📈 Performans</h2>
+    <div class="qrafik" id="performans"></div>
+    <div id="performans-qeyd"></div>
+  </div>
+
+  <!-- ---------------- dizayn ---------------- -->
+  <div class="kart gizli" id="k-dizayn">
+    <h2>🎨 Dizayn</h2>
+    <h3>Rəng palitrası</h3>
+    <div class="palitra" id="renqler"></div>
+    <h3>Şriftlər</h3>
+    <div class="teqler" id="sriftler"></div>
+  </div>
+
+  <!-- ---------------- reklam ---------------- -->
+  <div class="kart gizli" id="k-reklam">
+    <h2>📢 Reklam və analitika</h2>
+    <div class="teqler" id="reklam"></div>
+  </div>
+
+  <!-- ---------------- məzmun ---------------- -->
+  <div class="kart gizli" id="k-mezmun">
+    <h2>📊 Məzmun və struktur</h2>
+    <table class="cedvel"><tbody id="mezmun"></tbody></table>
+    <h3>Sosial şəbəkələr və əlaqə</h3>
+    <div class="teqler" id="elaqe"></div>
+  </div>
+
+  <!-- ---------------- yığılan səhifələr ---------------- -->
+  <div class="kart gizli" id="k-sehifeler">
+    <h2>📄 RAG bazasına düşən səhifələr</h2>
+    <table class="cedvel"><tbody id="sehifeler"></tbody></table>
+  </div>
+
+</div>
+
+<script src="/static/render.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

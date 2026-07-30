@@ -1,0 +1,141 @@
+{
+  "name": "SaytLupa 1 — Analiz tetikleyicisi",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "saytlupa-analiz",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf1-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-620, 300],
+      "webhookId": "8f2c1a10-1111-4a10-9a01-saytlupa0001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/analyze",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ url: $json.body.url, max_sehife: $json.body.max_sehife || 10 }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "wf1-basla",
+      "name": "Analizi başlat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": { "amount": 15 },
+      "id": "wf1-gozle",
+      "name": "15 saniyə gözlə",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-180, 300],
+      "webhookId": "8f2c1a10-2222-4a10-9a01-saytlupa0001"
+    },
+    {
+      "parameters": {
+        "url": "=http://host.docker.internal:8000/api/analyze/{{ $('Analizi başlat').item.json.analiz_id }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "wf1-status",
+      "name": "Statusu yoxla",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "wf1-sert-1",
+              "leftValue": "={{ ['hazir', 'xeta'].includes($json.status) }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "wf1-bitdi",
+      "name": "Analiz bitdi?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Xam analizi n8n-in bazaya yazacağı sadə sətrə çevirir.\n// İş məntiqi burada yazılmır — yalnız formatlama.\nconst a = $input.first().json;\nconst h = a.ai_hesabat || {};\nconst xam = a.xam || {};\n\nconst tovsiyeler = (h.muasir_versiya_tovsiyeleri || []).slice(0, 3).join(' · ');\nconst xulase = a.status === 'xeta'\n  ? `Analiz sındı: ${a.xeta}`\n  : `${a.domain} — ${a.sehife_sayi} səhifə, ${a.chunk_sayi} chunk, ` +\n    `${xam.ugurlu_toplayici || 0}/${xam.umumi_toplayici || 0} toplayıcı`;\n\nreturn [{\n  json: {\n    workflow: 'SaytLupa 1 — Analiz tetikleyicisi',\n    site_id: a.site_id,\n    analiz_id: a.id,\n    xulase,\n    data: {\n      url: a.url,\n      domain: a.domain,\n      status: a.status,\n      sehife_sayi: a.sehife_sayi,\n      chunk_sayi: a.chunk_sayi,\n      yuklenme_saniye: xam.yuklenme_saniye || null,\n      meqsed: h.meqsed || '',\n      tovsiyeler,\n    },\n  },\n}];"
+      },
+      "id": "wf1-formatla",
+      "name": "Nəticəni formatla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO n8n_jurnal (workflow, site_id, analiz_id, xulase, data, tarix)\nVALUES ($1, $2, $3, $4, $5::json, NOW())\nRETURNING id, tarix;",
+        "options": {
+          "queryReplacement": "={{ [$json.workflow, $json.site_id, $json.analiz_id, $json.xulase, JSON.stringify($json.data)] }}"
+        }
+      },
+      "id": "wf1-postgres",
+      "name": "Bazaya yaz",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [700, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ qebul: true, analiz_id: $('Nəticəni formatla').item.json.analiz_id, xulase: $('Nəticəni formatla').item.json.xulase }) }}",
+        "options": {}
+      },
+      "id": "wf1-cavab",
+      "name": "Cavab qaytar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [920, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Analizi başlat", "type": "main", "index": 0 }]] },
+    "Analizi başlat": { "main": [[{ "node": "15 saniyə gözlə", "type": "main", "index": 0 }]] },
+    "15 saniyə gözlə": { "main": [[{ "node": "Statusu yoxla", "type": "main", "index": 0 }]] },
+    "Statusu yoxla": { "main": [[{ "node": "Analiz bitdi?", "type": "main", "index": 0 }]] },
+    "Analiz bitdi?": {
+      "main": [
+        [{ "node": "Nəticəni formatla", "type": "main", "index": 0 }],
+        [{ "node": "15 saniyə gözlə", "type": "main", "index": 0 }]
+      ]
+    },
+    "Nəticəni formatla": { "main": [[{ "node": "Bazaya yaz", "type": "main", "index": 0 }]] },
+    "Bazaya yaz": { "main": [[{ "node": "Cavab qaytar", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

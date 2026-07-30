@@ -1,0 +1,62 @@
+{
+  "name": "SaytLupa 3 — Error Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "wf3-trigger",
+      "name": "Xəta tetikleyicisi",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [-560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error Trigger-in gətirdiyi qeydi bir sətrə yığır.\n// n8n bəzi hallarda `execution`, bəzən `trigger` sahəsi göndərir — hər ikisinə baxırıq.\nconst q = $input.first().json;\nconst wf = q.workflow || {};\nconst ex = q.execution || q.trigger || {};\nconst xeta = ex.error || {};\n\nconst setir = [\n  xeta.message || 'naməlum xəta',\n  xeta.description ? `(${xeta.description})` : '',\n  ex.lastNodeExecuted ? `node: ${ex.lastNodeExecuted}` : '',\n  ex.url ? `icra: ${ex.url}` : '',\n].filter(Boolean).join(' | ');\n\nreturn [{\n  json: {\n    menbe: 'n8n',\n    workflow: wf.name || 'naməlum workflow',\n    xeta_metni: setir,\n    icra_linki: ex.url || '',\n  },\n}];"
+      },
+      "id": "wf3-formatla",
+      "name": "Xətanı formatla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/xetalar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ menbe: $json.menbe, workflow: $json.workflow, xeta_metni: $json.xeta_metni }) }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "wf3-yaz",
+      "name": "job_errors-a yaz",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-120, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=❌ <b>n8n workflow sındı</b>\n\n<b>{{ $('Xətanı formatla').item.json.workflow }}</b>\n{{ $('Xətanı formatla').item.json.xeta_metni }}",
+        "additionalFields": { "parse_mode": "HTML", "appendAttribution": false }
+      },
+      "id": "wf3-telegram",
+      "name": "Telegram xəbərdarlığı",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [100, 300],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Xəta tetikleyicisi": { "main": [[{ "node": "Xətanı formatla", "type": "main", "index": 0 }]] },
+    "Xətanı formatla": { "main": [[{ "node": "job_errors-a yaz", "type": "main", "index": 0 }]] },
+    "job_errors-a yaz": { "main": [[{ "node": "Telegram xəbərdarlığı", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

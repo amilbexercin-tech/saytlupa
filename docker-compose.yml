@@ -1,0 +1,64 @@
+# SaytLupa — xidmətlər profillərə bölünüb (RAM 7.8 GB olduğu üçün).
+#
+#   docker compose --profile core up -d    → Postgres + Redis   (~450 MB)
+#   docker compose --profile n8n  up -d    → n8n                (~500 MB)
+#
+# Heç vaxt hamısını birdən qaldırmaq lazım deyil.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    profiles: ["core"]
+    environment:
+      POSTGRES_USER: saytlupa
+      POSTGRES_PASSWORD: saytlupa
+      POSTGRES_DB: saytlupa
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saytlupa"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["core"]
+    command: redis-server --save 60 1 --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  # QEYD: Amil-in maşınında artıq 5678 portunda işləyən n8n var
+  # (self-hosted-ai-starter-kit). Gündəlik işdə həmin n8n istifadə olunur.
+  # Bu servis layihəni başqa maşında sıfırdan qaldırmaq üçündür — port 5679.
+  n8n:
+    image: n8nio/n8n:latest
+    profiles: ["n8n"]
+    environment:
+      N8N_PORT: 5678
+      GENERIC_TIMEZONE: Asia/Baku
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      # host maşındakı FastAPI-yə müraciət üçün
+      SAYTLUPA_API: http://host.docker.internal:8000
+    ports:
+      - "5679:5678"
+    volumes:
+      - n8ndata:/home/node/.n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+# Adlandırılmış volume-lar Docker-in öz disk image-ində saxlanır.
+# O image-i D: diskinə köçürmək üçün:
+#   Docker Desktop → Settings → Resources → Advanced → Disk image location = D:\DockerData
+volumes:
+  pgdata:
+  redisdata:
+  n8ndata:

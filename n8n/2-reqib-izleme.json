@@ -1,0 +1,150 @@
+{
+  "name": "SaytLupa 2 — Rəqib izləmə",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }]
+        }
+      },
+      "id": "wf2-cron",
+      "name": "Hər gün 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-660, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/izleme",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "min_saat", "value": "20" }]
+        },
+        "options": { "timeout": 20000 }
+      },
+      "id": "wf2-siyahi",
+      "name": "İzlənən saytlar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-440, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": { "options": { "reset": false } },
+      "id": "wf2-batch",
+      "name": "Bir-bir götür",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://host.docker.internal:8000/api/izleme/{{ $json.site_id }}/yoxla",
+        "options": { "timeout": 300000 }
+      },
+      "id": "wf2-yoxla",
+      "name": "Saytı yoxla",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 400],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 15000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "wf2-sert-1",
+              "leftValue": "={{ $json.deyisdi }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "wf2-if",
+      "name": "Dəyişiklik var?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [260, 340]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "=🔔 <b>{{ $json.domain }}</b> dəyişdi\n\n{{ $json.xulase }}\n\nYoxlanan səhifə: {{ $json.yoxlanan_sehife }}\n{{ $json.url }}",
+        "additionalFields": { "parse_mode": "HTML", "appendAttribution": false }
+      },
+      "id": "wf2-telegram",
+      "name": "Telegram xəbərdarlığı",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [480, 240],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/xetalar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ menbe: 'izleme', workflow: 'SaytLupa 2 — Rəqib izləmə', xeta_metni: 'site_id=' + ($('Bir-bir götür').item.json.site_id || '?') + ' — ' + ($json.error?.message || JSON.stringify($json)) }) }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "wf2-xeta",
+      "name": "Xətanı yaz",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 540],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "wf2-bitdi",
+      "name": "Bitdi",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [40, 180]
+    }
+  ],
+  "connections": {
+    "Hər gün 09:00": { "main": [[{ "node": "İzlənən saytlar", "type": "main", "index": 0 }]] },
+    "İzlənən saytlar": { "main": [[{ "node": "Bir-bir götür", "type": "main", "index": 0 }]] },
+    "Bir-bir götür": {
+      "main": [
+        [{ "node": "Bitdi", "type": "main", "index": 0 }],
+        [{ "node": "Saytı yoxla", "type": "main", "index": 0 }]
+      ]
+    },
+    "Saytı yoxla": {
+      "main": [
+        [{ "node": "Dəyişiklik var?", "type": "main", "index": 0 }],
+        [{ "node": "Xətanı yaz", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dəyişiklik var?": {
+      "main": [
+        [{ "node": "Telegram xəbərdarlığı", "type": "main", "index": 0 }],
+        [{ "node": "Bir-bir götür", "type": "main", "index": 0 }]
+      ]
+    },
+    "Telegram xəbərdarlığı": { "main": [[{ "node": "Bir-bir götür", "type": "main", "index": 0 }]] },
+    "Xətanı yaz": { "main": [[{ "node": "Bir-bir götür", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
