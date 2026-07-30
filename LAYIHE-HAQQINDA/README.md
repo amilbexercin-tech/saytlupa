@@ -214,6 +214,7 @@ müəllif hüququnu pozmaq, saytların istifadə şərtlərini pozmaq.
 | 12 | Sənədləşdirmə və cilalama | ✅ hazır |
 | 13 | Müqayisə səhifəsi (interfeys) + etibarsız məlumatda hökm verilməməsi | ✅ hazır |
 | 14 | Açıq/qaranlıq keçid düyməsi + `claude-opus-5` ölçməsi + GitHub | ✅ hazır |
+| 15 | Nümayiş ssenarisinin yoxlanışı (12 addım) + təhvilə hazırlıq | ✅ hazır |
 
 **Ölçülmüş nəticələr (hazırkı hissə üzrə):**
 

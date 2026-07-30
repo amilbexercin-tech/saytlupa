@@ -139,7 +139,7 @@ claude mcp list        # saytlupa … ✔ Connected
 
 ## 8. Nümayiş ssenarisi (müəllimə göstərmək üçün)
 
-> Bütün addımlar işləyir (2026-07-29 vəziyyəti). Şərt: uvicorn pəncərəsi açıq
+> Bütün addımlar işləyir (2026-07-30 vəziyyəti). Şərt: uvicorn pəncərəsi açıq
 > olsun; n8n və MCP addımları üçün 7-ci bölmədəki qoşulma bir dəfə edilməlidir.
 
 ### Addım 1 — Sistem vəziyyəti
@@ -169,11 +169,17 @@ HAZIR — 0 səhifə
 **Nəyi göstərir:** sistem yalan hesabat qurmur, məhdudiyyəti dürüst bildirir.
 
 ### Addım 4 — Dəqiq olmayan məlumatın işarələnməsi
-`.az` domenlərində domen yaşı bölməsində:
-> *"Bu TLD üçün pulsuz WHOIS yoxdur… Arxiv.org-a görə sayt ən azı 2010 ilindən
-> mövcuddur (~15.6 il). Bu TƏXMİNİ göstəricidir."*
+`.az` domenlərində domen yaşı bölməsində (`asan.gov.az`, 2026-07-30 ölçməsi):
+> *"Bu TLD üçün pulsuz WHOIS yoxdur… Arxiv.org-a görə sayt ən azı 2013 ilindən
+> mövcuddur (~13.5 il). Bu TƏXMİNİ göstəricidir."*
 
 `github.com` isə RDAP-dan dəqiq **18.8 il** verir.
+
+Domen məlumatı ümumiyyətlə alınmasa (məsələn arxivdə də olmayan yeni `.az`
+sayt) xəta xam şəkildə yox, insan dilində yazılır:
+> *"«.az» zonası pulsuz WHOIS xidməti vermir — … Bu, analiz olunan saytın
+> qüsuru deyil; analizin qalan hissəsi etibarlıdır."*
+
 **Nəyi göstərir:** "heç vaxt uydurma rəqəm yazılmır" prinsipi koda yazılıb.
 
 ### Addım 5 — Saytla söhbət (RAG)
@@ -199,7 +205,23 @@ işarələnib — **uydurulmayıb**. Arşivdən xarici skriptlər silinib.
 **Nəyi göstərir:** alətlərin düzgün bölgüsü (SaytLupa hazırlayır, cloner skill
 qurur), etik crawl, uydurmasız hesabat.
 
-### Addım 7 — Model bölgüsü
+### Addım 7 — Saytları yan-yana müqayisə et
+Nəticə səhifəsində **⚖️ Başqa saytla müqayisə** kartı var. Siyahıdan ikinci
+saytı seç → **Müqayisə et**. 9 ölçü cədvəldə çıxır, üstün tərəf yaşıl işıqla
+göstərilir; altında ortaq/fərqli texnologiyalar və SEO çatışmazlıqları.
+
+İndi `kontakt.az` ilə müqayisə et — cədvəldən **əvvəl** xəbərdarlıq çıxır:
+> *"kontakt.az Cloudflare arxasındadır — ölçülən rəqəmlər yoxlama səhifəsinə
+> aiddir, real sayta yox."*
+
+və saytın məzmununa əsaslanan ölçülərdə **heç bir üstünlük hökmü verilmir**.
+Yalnız domen yaşı və sertifikat müqayisə olunur, çünki onlar saytın verdiyi
+HTML-dən asılı deyil.
+
+**Nəyi göstərir:** eyni prinsip müqayisədə də saxlanılır — bloklanmış saytı
+"daha az skript işlədir, deməli daha yaxşıdır" kimi göstərmək uydurma olardı.
+
+### Addım 8 — Model bölgüsü
 Terminalda:
 ```bash
 py scripts/model_olcme.py
@@ -207,7 +229,7 @@ py scripts/model_olcme.py
 Cədvəl çıxır: hansı model neçə faiz dəqiqdir, neçə saniyə çəkir.
 **Nəyi göstərir:** LLM anatomiyası — iddia yox, ölçmə.
 
-### Addım 8 — İzləmə düyməsi
+### Addım 9 — İzləmə düyməsi
 Nəticə səhifəsində **🔔 Bu saytı izlə** düyməsini bas. Sayt n8n cron-una qoşulur;
 düymə "🔕 İzləməni dayandır"a çevrilir. Yoxlama:
 ```bash
@@ -215,7 +237,7 @@ curl http://localhost:8000/api/izleme
 ```
 **Nəyi göstərir:** interfeys → API → baza → n8n zənciri.
 
-### Addım 9 — n8n avtomatlaşdırması
+### Addım 10 — n8n avtomatlaşdırması
 n8n-i aç (<http://localhost:5678>) və dörd workflow-u sırayla göstər:
 
 | Workflow | Nə göstərir | Necə nümayiş etdirilir |
@@ -234,7 +256,7 @@ curl.exe -X POST http://localhost:5678/webhook/saytlupa-agent \
 **Nəyi göstərir:** n8n production naxışları — retry, error workflow, batch,
 lokal modelin avtomatlaşdırmaya qoşulması.
 
-### Addım 10 — MCP
+### Addım 11 — MCP
 Claude Code-u `D:\SaytLupa` qovluğundan aç və yaz:
 
 > *"asan.gov.az ilə kontakt.az-ı müqayisə et"*
@@ -245,6 +267,15 @@ Qoşulma yoxlaması: `claude mcp list` → `saytlupa … ✔ Connected`.
 işi özü görmür, FastAPI-yə ötürür.
 
 > Şərt: uvicorn pəncərəsi açıq olmalıdır — yoxsa alət "server cavab vermir" deyir.
+
+### Addım 12 — Açıq/qaranlıq rejim
+Başlıqdakı ☀️/🌙 düyməsini bas. Rejim dərhal dəyişir və `localStorage`-də
+saxlanılır — səhifəni yeniləsən də qalır. Seçim edilməyibsə əməliyyat
+sisteminin rejimi işləyir.
+
+**Nəyi göstərir:** interfeys həm sistemin seçiminə hörmət edir, həm də
+istifadəçiyə onu üstələmək imkanı verir; rejim ilk boyamadan əvvəl qoyulduğu
+üçün səhifə yanıb-sönmür.
 
 ---
 

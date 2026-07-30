@@ -200,6 +200,7 @@ docs/ekran/       13 ekran görüntüsü (işləyən sistemdən)
 | 12 | Sənədləşdirmə + 10 ekran görüntüsü + model ölçməsi | ✅ |
 | 13 | Müqayisə səhifəsi (interfeys) + etibarsız məlumatda hökm verilməməsi | ✅ |
 | 14 | Açıq/qaranlıq keçid düyməsi + opus ölçməsi + GitHub | ✅ |
+| 15 | Nümayiş ssenarisinin yoxlanışı (12 addım) + təhvilə hazırlıq | ✅ |
 
 ## Etik qeyd
 
