@@ -744,6 +744,79 @@ Testlər: 192 → **195**.
 
 ---
 
+## 📋 PLAN — Onlayn yerləşdirmə (2026-07-31-də ediləcək)
+
+> Bu bölmə **hələ edilməyib**. Məqsəd: layihəni hər kəsin görə biləcəyi
+> ünvana çıxarmaq — indi yalnız `localhost`-da görünür.
+
+### Verilmiş qərarlar
+
+| Sual | Qərar |
+|---|---|
+| Platforma | **DigitalOcean Droplet** (Docker + compose) |
+| Yeni analiz kim işlədə bilər | **Yalnız açarla** — ziyarətçi hazır analizləri görür |
+| n8n serverə çıxsınmı | **Xeyr** — avtomatlaşdırma qatıdır, ziyarətçi onu görmür; nümayişdə lokal maşında göstərilir |
+
+### Araşdırma nəticəsi: böyük server lazım deyil
+
+Layihə **Postgres və Redis olmadan da tam işləyir** — `rag/store.py`-də həm
+vektor, həm açar söz axtarışının SQLite yolu var (`if db.POSTGRES:` budaqları),
+keş isə yaddaşdaxili rejimə düşür. 2026-07-30-da yoxlanıldı: SQLite ilə 81
+parça, söhbət 4 mənbə ilə cavab verdi.
+
+| Yol | RAM | Təxmini qiymət |
+|---|---|---|
+| Yalnız FastAPI + SQLite | ~500 MB | $6-12/ay |
+| + Postgres/pgvector + Redis | ~1.5 GB | $12-24/ay |
+| + Ollama/gemma3:4b | ~6 GB | ~$48/ay |
+
+Gemma serverə çıxarılmır — `.env`-də onsuz da `RERANK=gemini`-dir.
+
+### Hazır olmayan üç şey
+
+1. **Tətbiqin `Dockerfile`-ı yoxdur** — lokalda `uvicorn` ilə işləyir
+2. **API-də giriş qoruması yoxdur** — `main.py`-də heç bir autentifikasiya
+   yoxdur. Bu, ən vacib maddədir: `/docs` səhifəsi bütün endpoint-ləri hazır
+   düymələrlə göstərir, ünvanı bilən hər kəs `POST /api/analyze` çağırıb
+   Anthropic/Gemini açarı ilə **pul xərcləyə bilər**
+3. **n8n workflow-larında ünvan** — `host.docker.internal:8000` lokal üçündür
+
+### Addımlar (bu sıra ilə)
+
+1. **Giriş qoruması** (lokal sınaqla, TDD)
+   - `.env`-də `API_ACAR`; boş olsa hər şey açıq qalır (lokal inkişaf pozulmur)
+   - Açar tələb olunan: `POST /api/analyze`, təhvil düymələri, `rag/yenile`,
+     izləmə və xəta yazan endpoint-lər
+   - Açıq qalan: bütün `GET` sorğuları, SSE axını, statik fayllar
+   - Söhbət (`POST /sites/{id}/chat`) — **həll edilməli**: bağlansa nümayişin
+     ən güclü hissəsi itir, açıq qalsa xərc sərhədsizdir. Təklif: IP başına
+     gündə 5 sual, limit dolanda səbəb yazılır
+2. **Dockerfile** — Python 3.14, `requirements.txt`, `uvicorn`
+3. **`docker-compose.prod.yml`** — `api` xidməti + (istəsək) `db`/`redis`;
+   `host.docker.internal` əvəzinə Docker şəbəkə adları
+4. **HTTPS** — Caddy (Let's Encrypt pulsuz, avtomatik)
+5. **Domen** — ~$10-15/il, ayrıca alınır
+6. **Serverdə `.env`** — açarlar repoya düşmür, əl ilə qoyulur
+7. **Hazır analizlərin köçürülməsi** — ziyarətçi boş səhifə görməsin deyə
+   `asan.gov.az` və bir-iki sayt əvvəlcədən analiz edilmiş olmalıdır
+
+### Nəzərə alınmalı risklər
+
+- **Datacenter IP-ləri daha tez bloklanır.** Cloudflare və bənzərləri
+  DigitalOcean IP-lərinə lokal maşından şübhəli baxır — serverdə daha çox sayt
+  «qorunur» kimi görünə bilər
+- **Analiz 30-120 saniyə çəkir** — DigitalOcean App Platform buna uyğun deyil,
+  adi Droplet + Docker düzgün seçimdir
+- **n8n-in cron-u** serverə çıxarılsa hər gün pullu analiz işlədəcək
+
+### Ayrıca kiçik iş
+
+`PAGESPEED_API_KEY` — `console.cloud.google.com` → PageSpeed Insights API →
+pulsuz açar. Hazırda açarsız kvota bitir və 429 mesajı çıxır (bu, xəta deyil,
+öz ölçmələrimiz onsuz da göstərilir).
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama
