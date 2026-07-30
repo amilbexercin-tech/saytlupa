@@ -217,6 +217,32 @@ def _whois(ad: str) -> dict:
     }
 
 
+def domen_sebeb(ad: str, xetalar: list[str]) -> str:
+    """Xəta zəncirini istifadəçinin başa düşəcəyi cümləyə çevirir.
+
+    `HTTPStatusError: 404 ... rdap.org` yazmaq heç nə demir — nəyin alınmadığı
+    və bunun nə mənaya gəldiyi yazılmalıdır (bax `surat.pagespeed_sebeb`).
+    """
+    hamisi = " | ".join(xetalar)
+    zona = "." + ad.rsplit(".", 1)[-1] if "." in ad else ad
+
+    if "WHOIS serveri tapılmadı" in hamisi:
+        return (
+            f"«{zona}» zonası pulsuz WHOIS xidməti vermir — domenin qeydiyyat tarixi "
+            "heç bir açıq mənbədə yoxdur, sayt arxiv.org-da da tapılmadı. "
+            "Bu, analiz olunan saytın qüsuru deyil; analizin qalan hissəsi etibarlıdır."
+        )
+    if "404" in hamisi:
+        return (
+            f"«{ad}» domen reyestrlərində tapılmadı — domen ya qeydiyyatdan çıxıb, "
+            "ya da ünvan səhv yazılıb. Analizin qalan hissəsi etibarlıdır."
+        )
+    return (
+        f"«{ad}» üçün domen reyestri cavab vermədi — məlumat bu dəfə alınmadı. "
+        "Bir azdan yenidən yoxlamaq olar; analizin qalan hissəsi etibarlıdır."
+    )
+
+
 @safe_collector("domen")
 @timed
 @cached(saniye=86400)  # domen məlumatı gün ərzində dəyişmir
@@ -251,7 +277,7 @@ async def topla(url: str) -> dict:
 
     if netice is None:
         if not arxiv:
-            raise RuntimeError("Domen məlumatı alınmadı — " + " | ".join(xetalar[:3]))
+            raise RuntimeError(domen_sebeb(ad, xetalar))
         netice = {
             "menbe": "wayback (təxmini)",
             "yaradilma": None, "bitme": None, "yenilenme": None,

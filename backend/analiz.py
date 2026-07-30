@@ -168,6 +168,7 @@ async def isle(analiz_id: int, site_id: int, url: str, max_sehife: int) -> dict:
             "status_kodu": netice["status_kodu"],
             "yuklenme_saniye": netice["yuklenme_saniye"],
             "qoruma": netice["qoruma"],
+            "js_sayt": netice["js_sayt"],
             "neticeler": netice["neticeler"],
             "ugurlu_toplayici": netice["ugurlu_toplayici"],
             "umumi_toplayici": netice["umumi_toplayici"],

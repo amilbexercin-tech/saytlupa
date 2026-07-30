@@ -24,7 +24,7 @@ onu test etmək, versiya nəzarətində saxlamaq və səhvi tapmaq çətinləşi
    │  analiz.py      dirijor: toplayıcılar → gəziş → baza           │
    │  hadise.py      canlı gedişat brokeri (asyncio.Queue)          │
    │                                                                 │
-   │  collectors/    9 toplayıcı + bot qoruması aşkarlanması        │
+   │  collectors/    9 toplayıcı + qoruma və JS saytı aşkarlanması  │
    │  crawler.py     robots.txt → sitemap → BFS gəziş               │
    │  metn.py        HTML → təmiz mətn + barmaq izi                 │
    │  rag/           chunking · embedding · axtarış · re-ranking    │

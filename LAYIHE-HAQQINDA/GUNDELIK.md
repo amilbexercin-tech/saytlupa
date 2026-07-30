@@ -410,6 +410,67 @@ Testlər: 160 → **174**.
 
 ---
 
+## 2026-07-30 — Elektrik kəsilməsindən sonrakı yığışdırma
+
+Gün 12 axşamı iş elektrik kəsilməsi ilə yarımçıq dayandı (son fayl 23:45-də
+yazılıb). Bu gün qalan uclar bağlandı.
+
+### ✅ Bitən işlər
+
+| Nə | Harada |
+|---|---|
+| Git repo quruldu, iki commit (baseline + düzəlişlər) | `.git/` |
+| Qabıq dırnaq xətasından yaranan 5 boş fayl silindi | layihə kökü |
+| Köhnəlmiş sənəd rəqəmləri düzəldildi (9→10 ekran, kod həcmi) | `README.md`, bu fayl |
+| `domen` toplayıcısının xəta mesajı insan dilinə çevrildi | `collectors/domen.py` |
+| JS ilə qurulan saytların aşkarlanması | `collectors/js_sayt.py` |
+| 13 yeni test (174 → **187**) | `tests/test_sebebler.py` |
+
+### 🔍 Tam yoxlama: kodda yarımçıqlıq tapılmadı
+
+Şübhə vardı ki, elektrik kəsiləndə kod yarımçıq qalıb. Yoxlanıldı: sintaksis,
+faylların kəsilməsi, TODO işarələri, JS-in istədiyi bütün element ID-ləri,
+frontend↔backend endpoint uyğunluğu; sonra proqram işə salınıb bütün axınlar
+sınandı (analiz, RAG söhbəti, 4 təhvil düyməsi, yükləmə, müqayisə, izləmə,
+MCP, 4 n8n JSON). **Hamısı işlədi.** Yarımçıq qalan yalnız sənəd rəqəmləri idi.
+
+Bir yanlış şübhə də araşdırıldı: `example.com` analizi 0 səhifə verirdi.
+Səbəb xəta deyil — saytın mətni 127 simvoldur, `MIN_METN = 150` filtri onu
+qəsdən atır. Düzəliş edilmədi.
+
+### 🔧 Səbəb yazılmayan iki hal
+
+`aiworks.az` analizinə (id 153) baxanda iki boşluq göründü:
+
+1. **`domen` toplayıcısı xam texniki xəta göstərirdi:**
+   `HTTPStatusError: 404 ... rdap.org | RuntimeError: 'az' üçün WHOIS serveri
+   tapılmadı`. Bu, Gün 12-də PageSpeed üçün edilən işin (`pagespeed_sebeb`)
+   eynisidir — həmin keçid `domen`-ə tətbiq olunmamışdı. İndi `domen_sebeb()`
+   üç halı ayırır: WHOIS-u olmayan zona, tapılmayan domen, cavab verməyən
+   reyestr. Hər üçündə "analizin qalan hissəsi etibarlıdır" yazılır.
+
+2. **JS ilə qurulan sayt səbəbsiz boş qalırdı.** `qoruma.py` bot qoruması
+   üçün "niyə boşdur" izahını verirdi, amma `aiworks.az` bloklanmır — sadəcə
+   React/Vite qabığıdır: serverin verdiyi HTML 1.8 KB, görünən mətn **0
+   simvol**, 0 link. Crawler onu haqlı olaraq atırdı, istifadəçi isə səbəbi
+   görmürdü. `js_sayt.yoxla()` əlavə edildi (`qoruma.py` ilə eyni quruluşda),
+   nəticə `xam.js_sayt`-a düşür, interfeys həm yuxarı zolaqda, həm əlaqə
+   bölməsində səbəbi yazır.
+
+**Çərçivə adı uydurulmur:** yalnız birmənalı işarə olanda yazılır
+(`__NEXT_DATA__` → Next.js, `ng-version` → Angular). `id="root"` tək başına
+heç nə sübut etmir — belə halda ad boş qalır.
+
+**Yanlış müsbətə qarşı:** `#root` olan, amma mətni də olan sayt (server
+tərəfdə çəkilmiş React) JS saytı sayılmır — hədd `MIN_METN` ilə eynidir (150
+simvol). Bunun testi var.
+
+Yoxlama: `aiworks.az` yenidən analiz edildi (id 239) — hər iki mesaj brauzerdə
+göründü, konsol xətası yoxdur (`docs/ekran/11-js-sayt.png`). `kontakt.az`
+(Cloudflare) yenidən yoxlandı — köhnə davranış pozulmayıb.
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama

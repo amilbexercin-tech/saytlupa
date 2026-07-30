@@ -218,6 +218,12 @@ function elaqeBloku(n, s) {
       arxasındadır — səhifənin məzmunu bizə verilmədi, əlaqə məlumatı
       çıxarıla bilmədi</span>`;
   }
+  const js = (n.xam || {}).js_sayt || {};
+  if (js.js_ile_qurulur) {
+    return `<span class="teq">Sayt ${tehlukesiz(js.cerceve || 'JS')} ilə brauzerdə
+      çəkilir — serverin verdiyi HTML-də mətn yoxdur, əlaqə məlumatı
+      çıxarıla bilmədi</span>`;
+  }
   if (!n.sehife_sayi) {
     return '<span class="teq">Səhifə yığılmadı — əlaqə məlumatı axtarıla bilmədi</span>';
   }
@@ -240,9 +246,13 @@ async function sehifeSiyahisi(siteId) {
 /* ---------------- hamısı ---------------- */
 
 function neticeniCiz(n) {
-  const q = (n.xam || {}).qoruma || {};
-  el('xeberdarliq').innerHTML = q.qorunur
-    ? `<div class="xeb">⚠️ ${tehlukesiz(q.qeyd)}</div>` : '';
+  /* Boş nəticənin səbəbi başda yazılır: ya sayt bizi bloklayır, ya da
+     məzmununu serverdə vermir. Səbəbsiz boş bölmə nasazlıq kimi görünür. */
+  const x = n.xam || {}, q = x.qoruma || {}, j = x.js_sayt || {};
+  el('xeberdarliq').innerHTML =
+    q.qorunur ? `<div class="xeb">⚠️ ${tehlukesiz(q.qeyd)}</div>`
+    : j.js_ile_qurulur ? `<div class="xeb">⚠️ ${tehlukesiz(j.qeyd)}</div>`
+    : '';
 
   umumiBaxis(n);
   aiHesabat(n);

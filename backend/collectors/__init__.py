@@ -16,6 +16,7 @@ from . import (
     dns_qeydleri,
     domen,
     geo,
+    js_sayt,
     qoruma,
     reklam,
     sehife,
@@ -73,6 +74,10 @@ async def butun_analiz(
     # 2) Bot qoruması varmı? (varsa məzmun analizi etibarsızdır — dürüst bildiririk)
     qoruma_neticesi = qoruma.yoxla(html, status_kodu)
 
+    # Bloklanmırıqsa da məzmun boş ola bilər: sayt brauzerdə çəkilirsə serverin
+    # verdiyi HTML qabıqdır. Səbəbi yazılmasa istifadəçi bunu nasazlıq sanır.
+    js_neticesi = js_sayt.yoxla(html)
+
     # 3) Şəbəkə toplayıcıları paralel
     for ad in URL_TOPLAYICILAR:
         bildir(ad, "isleyir")
@@ -103,6 +108,7 @@ async def butun_analiz(
         "status_kodu": status_kodu,
         "yuklenme_saniye": round(yuklenme, 2),
         "qoruma": qoruma_neticesi,
+        "js_sayt": js_neticesi,
         "neticeler": neticeler,
         "ugurlu_toplayici": ugurlu_sayi,
         "umumi_toplayici": len(ADLAR),

@@ -140,7 +140,7 @@ backend/
   db.py           SQLAlchemy — Postgres(pgvector) / SQLite fallback
   cache.py        Redis keş + fallback
   decorators.py   @cached, @retry, @timed, @safe_collector
-  collectors/     9 analiz toplayıcısı + bot qoruması aşkarlanması
+  collectors/     9 analiz toplayıcısı + bot qoruması və JS saytı aşkarlanması
   crawler.py      sayt gəzişi (robots.txt, sitemap, BFS)
   metn.py         HTML → təmiz mətn + barmaq izi
   hadise.py       SSE üçün hadisə brokeri
@@ -169,12 +169,12 @@ n8n/              4 workflow JSON
 tests/            pytest
 docs/specs/       dizayn sənədi
 storage/          yığılan səhifələr, arşivlər, PDF-lər
-docs/ekran/       10 ekran görüntüsü (işləyən sistemdən)
+docs/ekran/       11 ekran görüntüsü (işləyən sistemdən)
 ```
 
 ## Vəziyyət
 
-> Son yenilənmə: **2026-07-29** · 174 test keçir · hər üç model qoşuludur
+> Son yenilənmə: **2026-07-30** · 187 test keçir · hər üç model qoşuludur
 > (Claude sonnet-5 · Gemini 3.6 flash · gemma3:4b)
 
 | Gün | İş | Status |
