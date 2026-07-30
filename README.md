@@ -183,7 +183,7 @@ docs/ekran/       15 ekran görüntüsü (işləyən sistemdən)
 
 ## Vəziyyət
 
-> Son yenilənmə: **2026-07-30** · 192 test keçir · hər üç model qoşuludur
+> Son yenilənmə: **2026-07-30** · 195 test keçir · hər üç model qoşuludur
 > (Claude sonnet-5 · Gemini 3.6 flash · gemma3:4b)
 
 | Gün | İş | Status |

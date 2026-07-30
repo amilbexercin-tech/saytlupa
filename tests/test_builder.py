@@ -267,3 +267,48 @@ def test_butun_dord_duyme_yukleme_yolu_var():
 
 def test_yukleme_naməlum_novde_none_qaytarir():
     assert builder.yukle_yolu("virus", 1) is None
+
+
+# ---------- müasir versiyanın yazılması ----------
+
+
+def _muasir_sinaq(monkeypatch, tmp_path, html: str):
+    """`qur()`-u şəbəkəsiz işlədir: kontekst və zəncir əvəz olunur."""
+    from backend.builder import muasir
+
+    monkeypatch.setattr(muasir.kontekst, "konteks", lambda a: {
+        "url": "https://sinaq.az", "domain": "sinaq.az",
+        "xam": {}, "sehifeler": [], "ai_hesabat": {},
+    })
+    monkeypatch.setattr(muasir.zencir, "yarat", lambda *a, **k: {
+        "html": html, "olcme": {"model": "sinaq-model", "ugurlu": True},
+    })
+    monkeypatch.setattr(muasir.kontekst, "qovluq", lambda *a: tmp_path)
+    return muasir.qur(1)
+
+
+def test_muasir_fayli_yazilir_ve_olcu_qaytarilir(tmp_path, monkeypatch):
+    """Uğurlu yol tam icra olunur — nəticə qaytarılanda sınmır."""
+    # Ölçü KB-la yuvarlaqlaşdırılır, ona görə nümunə real səhifə boydadır
+    boyuk = "<!DOCTYPE html><html><body>" + "salam " * 400 + "</body></html>"
+
+    netice = _muasir_sinaq(monkeypatch, tmp_path, boyuk)
+
+    assert netice["ugurlu"] is True
+    assert netice["olcu_kb"] > 0
+    assert (tmp_path / "index.html").exists()
+
+
+def test_muasir_fayla_elave_qeyd_yazmir(tmp_path, monkeypatch):
+    """Nə gəlirsə fayla o yazılır — üstünə mənşə şərhi əlavə edilmir."""
+    xam_html = "<!DOCTYPE html><html><body>salam</body></html>"
+    _muasir_sinaq(monkeypatch, tmp_path, xam_html)
+
+    assert (tmp_path / "index.html").read_text(encoding="utf-8") == xam_html
+
+
+def test_muasir_html_bos_olanda_sebeb_qaytarir(tmp_path, monkeypatch):
+    netice = _muasir_sinaq(monkeypatch, tmp_path, "")
+
+    assert netice["ugurlu"] is False
+    assert not (tmp_path / "index.html").exists()

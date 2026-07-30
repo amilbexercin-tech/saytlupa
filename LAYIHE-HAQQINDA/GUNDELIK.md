@@ -112,7 +112,7 @@ Dörd təhvil düyməsi hazırdır. Kök qovluqdakı 11 boş zibil fayl (sınmı
 
 1. **PDF cədvəl xanaları `Paragraph` olmalıdır** — adi mətn xanası sətrə sığmayanda kəsilmir, səhifədən çölə daşır. Uzun ünvanlar və meta description hesabatı korlayırdı.
 2. **`&` və `<` PDF-i sındırır** — reportlab xanaları XML kimi oxuyur; bütün dinamik mətn qaçırılır (`qacir`).
-3. **Şərh `<!doctype>`-dan əvvəl gəlməməlidir** — müasir versiyanın başına qoyulan mənşə qeydi doctype-dan qabaq olsa brauzer quirks rejiminə keçir.
+3. **Şərh `<!doctype>`-dan əvvəl gəlməməlidir** — müasir versiyanın başına qoyulan mənşə qeydi doctype-dan qabaq olsa brauzer quirks rejiminə keçir. *(Qeyd 2026-07-30-da tamamilə götürüldü — aşağıya bax.)*
 4. **CSS içindəki `url(...)`** — arşivdə yalnız `<img>` və `<link>` yönləndirilsə fon şəkilləri qırılır; CSS bir səviyyə dərinliyə qədər açılır.
 5. **Emoji PDF-də boş qutu çıxır** — sistem şriftlərində emoji qlifi yoxdur, başlıqdan çıxarıldı.
 
@@ -704,6 +704,43 @@ kartında qısa sətir kimi görünür; matrix fonu da qoşulur.
 
 Siyahı boş olanda (bazada tək sayt var) açılan siyahı gizlənir, ünvan sahəsi
 qalır — yəni müqayisə artıq həmişə mümkündür.
+
+---
+
+## 2026-07-30 (davamı) — Mənşə damğasının götürülməsi
+
+«Müasir versiyanı qur» düyməsi yaradılan HTML-in başına şərh qoyurdu:
+
+```html
+<!--
+  SaytLupa ilə yaradılıb — 2026-07-30 12:05 UTC
+  Mənbə sayt: https://asan.gov.az/
+  Model: claude-sonnet-5
+  Bu, saytın kopyası DEYİL — analizə əsaslanan müasir versiya təklifidir.
+-->
+```
+
+Amil onun götürülməsini istədi. Qeyd əvvəl qəsdən qoyulmuşdu (fayl saytın öz
+kodu ilə qarışdırılmasın deyə) — bu, açıq şəkildə bildirildi, qərar sahibin
+oldu. `_qeyd_elave()` funksiyası tamamilə silindi, artıq zəncirdən nə gəlirsə
+fayla o yazılır. Sınaq zamanı yaradılmış zip fayllar da silindi.
+
+### 🔴 Silərkən səhv buraxıldı — test onu tutmadı
+
+`html` dəyişəni ləğv edildi, amma aşağıdakı `olcu_kb` sətri hələ ona
+istinad edirdi → `NameError`. **192 testin heç biri bunu tutmadı**, çünki
+`builder/muasir.py`-nin uğurlu yolu ümumiyyətlə örtülməmişdi: yalnız
+`chains/muasir.py` (zəncir) test edilirdi.
+
+Səhv canlı serverdə üzə çıxdı. Sonra 3 test yazıldı (`test_builder.py`):
+fayl yazılır və ölçü qaytarılır · **fayla əlavə qeyd yazılmır** · html boş
+olanda səbəb qaytarılır. Testlərin həqiqətən işlədiyi yoxlanıldı — səhv
+qəsdən geri qoyuldu, ikisi də sındı, sonra düzəliş bərpa edildi.
+
+Testlər: 192 → **195**.
+
+**Dərs:** funksiya silinəndə onun *istifadə yerləri* də yoxlanmalıdır, və
+örtülməyən uğurlu yol belə anlarda özünü göstərir.
 
 ---
 
