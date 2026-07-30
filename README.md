@@ -156,6 +156,7 @@ backend/
   chains/rag_cavab.py  LCEL: sual + mənbə + yaddaş → cavab
   chains/muasir.py     LCEL: analiz → tək fayllıq müasir HTML (Gemma-sız)
   prompts/        promptlar ayrıca (hesabat, rag, muasir)
+  builder/kontekst.py  dörd təhvil düyməsi üçün ortaq məlumat və qovluqlar
   builder/muasir.py    ⚡ müasir versiyanı qurur və saxlayır
   builder/klon.py      🧬 ai-website-cloner üçün 5 araşdırma sənədi
   builder/arsiv.py     📦 səhifə arşivi (HTML + CSS + şəkillər, ZIP)
@@ -168,7 +169,7 @@ n8n/              4 workflow JSON
 tests/            pytest
 docs/specs/       dizayn sənədi
 storage/          yığılan səhifələr, arşivlər, PDF-lər
-docs/ekran/       9 ekran görüntüsü (işləyən sistemdən)
+docs/ekran/       10 ekran görüntüsü (işləyən sistemdən)
 ```
 
 ## Vəziyyət
@@ -187,7 +188,7 @@ docs/ekran/       9 ekran görüntüsü (işləyən sistemdən)
 | 9 | Təhvil: müasir versiya · klon hazırlığı · arşiv · PDF | ✅ |
 | 10 | n8n (4 workflow + Gemma agenti) + izləmə xidməti | ✅ |
 | 11 | MCP serveri (3 tool) + sayt müqayisəsi + testlər | ✅ |
-| 12 | Sənədləşdirmə + 9 ekran görüntüsü + model ölçməsi | ✅ |
+| 12 | Sənədləşdirmə + 10 ekran görüntüsü + model ölçməsi | ✅ |
 
 ## Etik qeyd
 

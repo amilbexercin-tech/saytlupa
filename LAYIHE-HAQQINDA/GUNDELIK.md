@@ -349,7 +349,7 @@ Testdə `json.loads(json.dumps(...))` ilə dərin nüsxə götürüldü.
 
 | Nə | Harada |
 |---|---|
-| 9 ekran görüntüsü (işləyən sistemdən) | `docs/ekran/` |
+| 10 ekran görüntüsü (işləyən sistemdən) | `docs/ekran/` |
 | Müasir versiyanın Claude ilə ölçülməsi | `docs/model-secimi.md` → 4-cü ölçmə |
 | Memarlıq: izləmə axını, 4 workflow, MCP bölmələri | `MEMARLIQ.md` |
 | 4 yeni qərar + 4 yeni səhv (cəmi 18) | `QERARLAR.md` |
@@ -405,8 +405,8 @@ Testlər: 160 → **174**.
 
 ### 📌 Layihənin yekunu
 
-12 günün hamısı bağlandı: **174 test**, ~7 100 sətir kod, 4 n8n workflow,
-3 MCP aləti, 9 ekran görüntüsü, 4 ölçmə sənədi.
+12 günün hamısı bağlandı: **174 test**, ~7 400 sətir kod, 4 n8n workflow,
+3 MCP aləti, 10 ekran görüntüsü, 4 ölçmə sənədi.
 
 ---
 

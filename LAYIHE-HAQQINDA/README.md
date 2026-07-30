@@ -198,7 +198,7 @@ müəllif hüququnu pozmaq, saytların istifadə şərtlərini pozmaq.
 
 ## 📊 HAZIRKI VƏZİYYƏT
 
-> Son yenilənmə: **2026-07-29** · 174 test keçir · ~7 100 sətir kod
+> Son yenilənmə: **2026-07-30** · 174 test keçir · ~7 400 sətir kod
 
 | Gün | İş | Vəziyyət |
 |---|---|---|
@@ -231,7 +231,7 @@ müəllif hüququnu pozmaq, saytların istifadə şərtlərini pozmaq.
 | Sayt müqayisəsi (`/api/muqayise`, hazır analizlər) | **2.4 saniyə** |
 | Gemma təsnifatı (n8n WF4, `gemma3:4b`) | **41.8 san** (soyuq) → **14.2 san** (model yaddaşda) |
 | Testlər | **174 keçir** |
-| Kod həcmi | ~7 100 sətir (test və sənədlərlə) |
+| Kod həcmi | ~7 400 sətir (backend + interfeys) · ayrıca ~2 300 sətir test və skript |
 | İnterfeys | 11 bölmə · açıq/qaranlıq rejim · mobil uyğun (yatay sürüşmə yoxdur) |
 
 > **İzləmə rəqəmi haqqında:** 11.4 saniyə — dəyişiklik **tapılmayan** haldır.
