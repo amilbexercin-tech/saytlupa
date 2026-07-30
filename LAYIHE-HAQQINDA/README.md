@@ -274,6 +274,7 @@ Hamısı `asan.gov.az` üzərində, işləyən sistemdən alınıb — `docs/ekr
 
 | Fayl | Nə var |
 |---|---|
+| [`UMUMI-MELUMAT.md`](UMUMI-MELUMAT.md) | **Buradan başla** — layihə nədir, necə işləyir, nə bacarmır |
 | [`TEXNOLOGIYALAR.md`](TEXNOLOGIYALAR.md) | Hansı kurs mövzusu hansı faylda tətbiq olunub |
 | [`MEMARLIQ.md`](MEMARLIQ.md) | Modul quruluşu, verilənlər bazası, axınlar |
 | [`QERARLAR.md`](QERARLAR.md) | Qərarlar və səbəbləri — ölçmə nəticələri ilə |

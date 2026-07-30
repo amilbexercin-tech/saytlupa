@@ -6,8 +6,10 @@
 hesabat yazır, saytın məzmunu ilə **söhbət edə bilirsən** (mənbə göstərməklə), və
 istəsən saytın **müasir versiyasını** qurdurursan.
 
-> AI Engineering kursunun aylıq layihəsi. Dizayn sənədi:
-> [`docs/specs/2026-07-28-saytlupa-design.md`](docs/specs/2026-07-28-saytlupa-design.md) ·
+> AI Engineering kursunun aylıq layihəsi.
+> **Layihə haqqında ümumi məlumat:**
+> [`LAYIHE-HAQQINDA/UMUMI-MELUMAT.md`](LAYIHE-HAQQINDA/UMUMI-MELUMAT.md) ·
+> dizayn sənədi: [`docs/specs/`](docs/specs/) ·
 > gündəlik və qərarlar: [`LAYIHE-HAQQINDA/`](LAYIHE-HAQQINDA/)
 
 ---
