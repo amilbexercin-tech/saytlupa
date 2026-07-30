@@ -583,6 +583,46 @@ yoxlandı.
 
 ---
 
+## 2026-07-30 (davamı) — Gün 15: yekun keçid
+
+Nümayiş ssenarisinin 12 addımı işləyən sistemdə baş-ayaq keçirildi.
+
+| Addım | Necə yoxlandı | Nəticə |
+|---|---|---|
+| 1 — Sistem vəziyyəti | interfeys | `Baza: postgresql · Keş: redis · Claude · Gemini · Gemma` |
+| 2 — Analiz və canlı gedişat | interfeysdən `asan.gov.az` (analiz 426) | 9/9 toplayıcı · 30 səhifə · 104 chunk · 6 bəndlik hesabat (37.2 san) |
+| 3 — Dayanıqlılıq | `kontakt.az` (analiz 131) | Cloudflare aşkarlanır, gəziş atlanır |
+| 4 — Təxmini məlumatın işarələnməsi | analiz 426 | `wayback (təxmini)` · 2013 · ~13.5 il |
+| 5 — RAG söhbəti | interfeysdə sual | cavab **4 mənbə** ilə, real məzmundan |
+| 6 — Təhvil düymələri | PDF 85.2 KB · klon 6 sənəd · arşiv 2.3 MB | üçü də `ugurlu`, yükləmə linkləri işləyir |
+| 7 — Müqayisə | `asan.gov.az ↔ kontakt.az` | 1 xəbərdarlıq, yalnız 1 hökm (sertifikat) |
+| 8 — Model bölgüsü | `scripts/model_olcme.py` | yerindədir, ölçmə nəticəsi sənəddə |
+| 9 — İzləmə | `POST/GET/DELETE /api/izleme` | üçü də işləyir |
+| 10 — n8n | `localhost:5678` | HTTP 200 |
+| 11 — MCP | `claude mcp list` | `saytlupa … ✔ Connected` |
+| 12 — Açıq/qaranlıq rejim | düymə + yeniləmə | `data-tema` qoyulur, `localStorage`-də qalır |
+
+Konsol xətası yoxdur. Yekun ekran görüntüləri: `14-yekun-isiqli.png`,
+`15-yekun-qaranliq.png`.
+
+### 🔧 Yol boyu tapılan iki səhv
+
+**Sənəddəki rəqəm yanlış idi.** Ssenari `.az` domen yaşı üçün «ən azı 2010,
+~15.6 il» yazırdı; ölçdüm — `asan.gov.az` üçün **2013, ~13.5 il**. Nümayişdə
+müəllim ekranda başqa rəqəm görərdi. Düzəldildi və hansı domen olduğu yazıldı.
+`github.com` üçün yazılan 18.8 il isə doğru çıxdı.
+
+**Qlobal hook konfiqurasiyası sınıq idi.** `~/.claude/settings.json`-dakı 16
+hook əmri `cmd /c "IF EXIST "..." (node ...)"` formasında idi, amma maşında
+Git Bash olduğu üçün hook əmrləri **bash-da** işləyir. Nəticə: əmr xəta
+vermirdi, **interaktiv `cmd.exe` açırdı** — yəni hooklar heç vaxt işləməyib və
+hər çağırışda işçi qovluqda 0 baytlıq zibil fayllar qalırdı (bu sessiyada 11
+ədəd təmizləndi). Əmrlər düzgün bash sintaksisinə keçirildi. Əlavə: `timeout`
+sahəsi saniyə ilədir, dəyərlər isə millisaniyə kimi yazılmışdı (`5000` = 83
+dəqiqə) — 14 dəyər saniyəyə çevrildi.
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama

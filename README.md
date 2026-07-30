@@ -178,7 +178,7 @@ n8n/              4 workflow JSON
 tests/            pytest
 docs/specs/       dizayn sənədi
 storage/          yığılan səhifələr, arşivlər, PDF-lər
-docs/ekran/       13 ekran görüntüsü (işləyən sistemdən)
+docs/ekran/       15 ekran görüntüsü (işləyən sistemdən)
 ```
 
 ## Vəziyyət
