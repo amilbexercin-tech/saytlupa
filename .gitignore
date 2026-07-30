@@ -9,3 +9,8 @@ storage/
 *.sqlite3
 .DS_Store
 .gstack/
+
+# Qabıq artefaktları: qlobal hook əmrlərindəki iç-içə dırnaqlama pozulanda
+# işçi qovluqda 0 baytlıq fayllar yaranır. Repoya düşməsinlər.
+(Claude
+*.tmp-artefakt
