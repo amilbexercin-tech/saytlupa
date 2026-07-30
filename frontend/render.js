@@ -326,5 +326,30 @@ function neticeniCiz(n) {
   sehifeSiyahisi(n.site_id);
 
   gorset('k-tehvil');
-  if (n.chunk_sayi > 0) gorset('k-sohbet');
+  sohbetVeziyyeti(n);
+}
+
+/* Söhbət yalnız RAG bazası qurulanda mümkündür. Əvvəl kart səssizcə
+   gizlənirdi — istifadəçi bölmənin ümumiyyətlə olmadığını sanırdı.
+   İndi kart qalır, səbəbi yazılır. */
+function sohbetVeziyyeti(n) {
+  const x = n.xam || {}, q = x.qoruma || {}, j = x.js_sayt || {};
+  gorset('k-sohbet');
+
+  if (n.chunk_sayi > 0) {
+    gorset('sohbet-qutu');
+    el('sohbet-sebeb').innerHTML = '';
+    return;
+  }
+
+  gizlet('sohbet-qutu');
+  const sebeb = q.qorunur
+    ? `Sayt ${tehlukesiz(q.xidmet || 'bot qoruması')} arxasındadır — məzmun bizə
+       verilmədi, ona görə bu saytla söhbət etmək mümkün deyil`
+    : j.js_ile_qurulur
+      ? `Sayt ${tehlukesiz(j.cerceve || 'JS')} ilə brauzerdə çəkilir — serverin
+         verdiyi HTML boş qabıqdır, söhbət üçün mətn yoxdur`
+      : `Bu saytdan RAG bazasına mətn düşmədi (yığılan səhifə: ${tehlukesiz(n.sehife_sayi)})
+         — söhbət yalnız mətni oxuna bilən saytlarda işləyir`;
+  el('sohbet-sebeb').innerHTML = `<span class="teq">${sebeb}</span>`;
 }

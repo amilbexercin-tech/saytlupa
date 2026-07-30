@@ -352,7 +352,9 @@ button:active:not(:disabled) { transform: translateZ(0) translateY(1px); box-sha
 /* ---------- müqayisə ---------- */
 
 .muqayise-secim { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.muqayise-secim.gizli { display: none; }
+/* `gizlet()` bu elementlərə də tətbiq olunur — kart olmayanlar üçün ayrıca qayda */
+.muqayise-secim.gizli, select.gizli, span.gizli, .axtar.gizli { display: none; }
+#muqayise-unvan { flex: 1 1 200px; min-width: 180px; }
 .cari-sayt { font-weight: 650; }
 .ox { color: var(--solgun); }
 

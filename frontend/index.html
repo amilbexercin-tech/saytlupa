@@ -76,10 +76,11 @@
   <div class="kart gizli" id="k-sohbet">
     <h2>💬 Saytla söhbət</h2>
     <div class="sohbet" id="sohbet"></div>
-    <div class="axtar">
+    <div class="axtar" id="sohbet-qutu">
       <input id="sual" type="text" placeholder="Məsələn: çatdırılma neçə gün çəkir?" />
       <button id="gonder">Soruş</button>
     </div>
+    <div class="teqler" id="sohbet-sebeb"></div>
     <div class="olcme-qeyd" id="rag-veziyyet"></div>
   </div>
 
@@ -132,9 +133,14 @@
     <div class="muqayise-secim gizli" id="muqayise-secim">
       <span class="cari-sayt" id="muqayise-cari"></span>
       <span class="ox">↔</span>
-      <select id="muqayise-sayt" aria-label="Müqayisə ediləcək sayt"></select>
+      <select id="muqayise-sayt" aria-label="Analiz olunmuş saytlardan seç"></select>
+      <span class="ox" id="muqayise-veya">və ya</span>
+      <input id="muqayise-unvan" type="text" placeholder="yeni sayt ünvanı yaz"
+             autocomplete="url" aria-label="Müqayisə üçün yeni sayt ünvanı" />
       <button id="d-muqayise">Müqayisə et</button>
     </div>
+    <p class="qeyd-setri">Yazılan sayt bazada yoxdursa əvvəlcə analiz edilir,
+      sonra müqayisə açılır.</p>
     <div id="muqayise-netice"></div>
   </div>
 

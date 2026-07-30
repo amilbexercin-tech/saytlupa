@@ -347,45 +347,101 @@ const muqayiseDugme = el('d-muqayise');
    ona görə ünvan yazdırmaq yox, analiz olunmuşları siyahıya qoyuruq. */
 async function muqayiseHazirla(siteId, domain) {
   el('muqayise-netice').innerHTML = '';
+  el('muqayise-unvan').value = '';
   el('muqayise-cari').textContent = domain || '';
 
   let saytlar = [];
   try {
     saytlar = await (await fetch('/api/sites')).json();
-  } catch { /* siyahı gəlməsə aşağıdakı səbəb yazılır */ }
+  } catch { /* siyahı gəlməsə ünvan yazmaqla yenə müqayisə etmək olar */ }
 
   const digerler = saytlar.filter((s) => s.id !== siteId);
 
-  if (digerler.length) {
-    el('muqayise-sayt').innerHTML = digerler.map((s) =>
-      `<option value="${tehlukesiz(s.id)}">${tehlukesiz(s.domain)}</option>`).join('');
-    gorset('muqayise-secim');
-  } else {
-    gizlet('muqayise-secim');
-    el('muqayise-netice').innerHTML = '<span class="teq">Müqayisə üçün ən azı iki ' +
-      'analiz olunmuş sayt lazımdır — başqa bir sayt analiz et</span>';
-  }
+  // Siyahı boş ola bilər (bazada tək sayt var) — o halda yalnız ünvan qalır
+  el('muqayise-sayt').classList.toggle('gizli', !digerler.length);
+  el('muqayise-veya').classList.toggle('gizli', !digerler.length);
+  el('muqayise-sayt').innerHTML = digerler.map((s) =>
+    `<option value="${tehlukesiz(s.id)}">${tehlukesiz(s.domain)}</option>`).join('');
+
+  gorset('muqayise-secim');
   gorset('k-muqayise');
 }
 
+const muqayiseQeyd = (metn) => {
+  el('muqayise-netice').innerHTML = `<span class="teq">${tehlukesiz(metn)}</span>`;
+};
+
+/* Yazılan sayt bazada yoxdursa əvvəlcə analiz edilir. Bu, əsas analizdən
+   ayrı gedir: cari nəticə səhifəsi pozulmur, gedişat müqayisə kartında
+   qısa sətir kimi görünür. */
+function ikinciSaytiAnaliz(unvan) {
+  return new Promise((hell, red) => {
+    fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: unvan, max_sehife: 20 }),
+    }).then(async (cavab) => {
+      if (!cavab.ok) {
+        const x = await cavab.json().catch(() => ({}));
+        const m = (x.detail && x.detail[0] && x.detail[0].msg) || cavab.status;
+        return red(new Error('Yanlış ünvan: ' + m));
+      }
+      const { analiz_id, site_id } = await cavab.json();
+      efektMatrix(true);
+
+      const axin = new EventSource(`/api/analyze/${analiz_id}/axin`);
+      const bitir2 = () => { axin.close(); efektMatrix(false); hell(site_id); };
+      const dinle2 = (ad, isleyici) =>
+        axin.addEventListener(ad, (e) => isleyici(JSON.parse(e.data || '{}')));
+
+      muqayiseQeyd(`${unvan} analiz edilir…`);
+      dinle2('sehife', (d) => muqayiseQeyd(`${unvan}: səhifə ${d.yigilan}/${d.hedef}`));
+      dinle2('rag', (d) => muqayiseQeyd(`${unvan}: RAG ${d.sehife}/${d.umumi}`));
+      dinle2('hesabat_basladi', () => muqayiseQeyd(`${unvan}: AI hesabat yazılır…`));
+      dinle2('gezis_atlandi', (d) => muqayiseQeyd(`${unvan}: ${d.sebeb}`));
+      axin.addEventListener('hazir', bitir2);
+      axin.addEventListener('son', bitir2);
+      axin.onerror = bitir2;
+    }).catch(() => red(new Error('Server cavab vermir')));
+  });
+}
+
+async function muqayiseGoster(ikinci) {
+  // Ünvan `https://…/?a=b` şəklində ola bilər — kodlanmasa sorğu parçalanır
+  const cavab = await fetch(
+    `/api/muqayise?sayt1=${cariSayt}&sayt2=${encodeURIComponent(ikinci)}`
+  );
+  const m = await cavab.json();
+  if (cavab.ok) {
+    el('muqayise-netice').innerHTML = muqayiseCedveli(m);
+    return true;
+  }
+  return false;   // 404 — sayt bazada yoxdur
+}
+
 muqayiseDugme.addEventListener('click', async () => {
-  const ikinci = el('muqayise-sayt').value;
-  if (!cariSayt || !ikinci) return;
+  const unvan = el('muqayise-unvan').value.trim();
+  const secilmis = el('muqayise-sayt').value;
+  if (!cariSayt || (!unvan && !secilmis)) return;
 
   const kohne = muqayiseDugme.textContent;
   muqayiseDugme.disabled = true;
   muqayiseDugme.textContent = 'gedir…';
-  const netice = el('muqayise-netice');
 
   try {
-    const cavab = await fetch(`/api/muqayise?sayt1=${cariSayt}&sayt2=${ikinci}`);
-    const m = await cavab.json();
-    // Sayt tapılmasa server 404 + `detail` qaytarır — səbəb olduğu kimi yazılır
-    netice.innerHTML = cavab.ok
-      ? muqayiseCedveli(m)
-      : `<span class="teq">${tehlukesiz(m.detail || cavab.status)}</span>`;
+    // Yazılan ünvan siyahıdakı seçimi üstələyir
+    if (!unvan) {
+      await muqayiseGoster(secilmis);
+    } else if (!(await muqayiseGoster(unvan))) {
+      // Bazada yoxdur — analiz et, sonra yenidən müqayisə
+      const yeniId = await ikinciSaytiAnaliz(unvan);
+      if (!(await muqayiseGoster(yeniId))) {
+        muqayiseQeyd('Analiz bitdi, amma müqayisə alınmadı — sayt açılmadı.');
+      }
+    }
   } catch (x) {
-    netice.innerHTML = `<span class="teq">Server cavab vermədi: ${tehlukesiz(x)}</span>`;
+    efektMatrix(false);
+    muqayiseQeyd(String(x.message || x));
   } finally {
     muqayiseDugme.disabled = false;
     muqayiseDugme.textContent = kohne;

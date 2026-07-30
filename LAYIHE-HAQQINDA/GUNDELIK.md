@@ -670,6 +670,43 @@ yoxdur. Görüntü: `docs/ekran/16-dizayn-netice.png`.
 
 ---
 
+## 2026-07-30 (davamı) — Söhbətin səbəbi və müqayisəyə ünvan sahəsi
+
+### 💬 Söhbət kartı niyə yox idi
+
+Amil «saytla danışmaq üçün bölmə olmalıdır» dedi — halbuki bölmə var idi.
+Səbəb: `kontakt.az` Cloudflare arxasındadır, 0 səhifə → 0 parça, kod isə
+`if (n.chunk_sayi > 0) gorset('k-sohbet')` yazırdı. Kart **səssizcə**
+gizlənirdi, istifadəçi isə funksiyanın ümumiyyətlə olmadığını sanırdı.
+
+İndi kart həmişə görünür, sual qutusunun yerinə səbəb yazılır — bloklanmış
+sayt, JS ilə qurulan sayt və mətn tapılmayan sayt üçün ayrı-ayrı cümlə.
+
+Dərs: **funksiyanı gizlətmək onu yox etməkdir.** Boş bölmə səbəblə birlikdə
+gizli bölmədən yaxşıdır.
+
+### ⚖️ Müqayisəyə ünvan sahəsi
+
+Əvvəl yalnız açılan siyahı var idi (analiz olunmuş saytlar). İndi yanında
+ünvan sahəsi də var. Yazılan sayt bazada yoxdursa axın belədir:
+
+```
+GET /api/muqayise → 404  →  POST /api/analyze → SSE gedişat → GET /api/muqayise → 200
+```
+
+Yoxlandı: `example.org` bazada yox idi → 404, analiz 32 saniyəyə bitdi →
+müqayisə açıldı. İkinci analiz cari nəticə səhifəsini pozmur, gedişat müqayisə
+kartında qısa sətir kimi görünür; matrix fonu da qoşulur.
+
+**Bir qüsur düzəldildi:** ünvan sorğuya kodlanmadan qoyulurdu
+(`sayt2=https://…`). Sorğu sətrində `?` və ya `&` olan ünvan parçalanardı —
+`encodeURIComponent` əlavə edildi.
+
+Siyahı boş olanda (bazada tək sayt var) açılan siyahı gizlənir, ünvan sahəsi
+qalır — yəni müqayisə artıq həmişə mümkündür.
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama
