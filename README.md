@@ -14,8 +14,10 @@ istəsən saytın **müasir versiyasını** qurdurursan.
 ## İşə salma
 
 ```bash
-cd /d D:\SaytLupa
-.venv\Scripts\activate
+git clone https://github.com/amilbexercin-tech/saytlupa.git
+cd saytlupa
+py -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.txt
 copy .env.example .env          # açarları doldur (məcburi deyil)
 uvicorn backend.main:app --reload
 ```
