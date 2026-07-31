@@ -1,0 +1,29 @@
+# `railway up` ilə əl ilə yerləşdirmə edəndə bu fayllar YÜKLƏNMİR.
+#
+# Ən vacibi `.env`: içində Anthropic/Google açarları var və onlar heç vaxt
+# şəbəkəyə çıxmamalıdır. Serverdə dəyişənlər Railway-in öz panelindədir.
+
+.env
+*.env
+!.env.example
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.claude-flow/
+.gstack/
+
+# İş nəticələri — serverdə volume-dan gəlir
+data/
+storage/
+*.db
+*.sqlite3
+
+# Serverdə lazım olmayanlar
+tests/
+docs/
+LAYIHE-HAQQINDA/
+scripts/
+n8n/
