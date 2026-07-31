@@ -1,11 +1,20 @@
 """Layihənin bütün parametrləri bir yerdə (pydantic-settings)."""
 
+import logging
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+log = logging.getLogger("saytlupa")
+
 KOK = Path(__file__).resolve().parent.parent
-STORAGE = KOK / "storage"
+
+# Arşiv, PDF və müasir versiya faylları buraya yazılır. Yol mühit dəyişəni ilə
+# dəyişdirilə bilər, çünki bulud hostinqlərində davamlı disk (volume) adətən
+# ayrı yola bağlanır — məsələn Railway-də `/data`. Volume bağlanmasa bu fayllar
+# hər yerləşdirmədə silinir.
+STORAGE = Path(os.getenv("STORAGE_YOLU") or (KOK / "storage"))
 
 
 class Ayarlar(BaseSettings):
@@ -80,5 +89,17 @@ ayarlar = Ayarlar()
 # Fayl qovluqları — proqram işə düşəndə hazır olsun.
 # `pages` burada YOXDUR: səhifələr bazada saxlanılır, fayl sistemində yox —
 # qovluq yaradılırdı, amma heç nə yazılmırdı.
+#
+# Xəta udulur, çünki bu, **import anında** işləyir: volume root sahibliyi ilə
+# bağlansa (Railway-də adi haldır) və konteyner root olmasa, `mkdir` sınar və
+# bütün tətbiq qalxmaz — çökmə döngüsündə səbəbi tapmaq çətindir. Belə halda
+# yalnız təhvil düymələri işləməyəcək, qalan hər şey (analiz, söhbət) işləyir.
 for alt in ("archives", "modern", "pdf", "klon"):
-    (STORAGE / alt).mkdir(parents=True, exist_ok=True)
+    try:
+        (STORAGE / alt).mkdir(parents=True, exist_ok=True)
+    except OSError as xeta:
+        log.warning(
+            "«%s» qovluğu yaradıla bilmədi (%s) — təhvil düymələri işləməyəcək. "
+            "Bulud hostinqində volume-un yazma icazəsini yoxla.",
+            STORAGE / alt, xeta,
+        )
