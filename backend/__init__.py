@@ -2,7 +2,9 @@
 
 import logging
 
-__version__ = "0.1.0"
+# FastAPI tətbiqi də bu dəyəri göstərir (`main.py`-dəki `version=`) — ikisi
+# fərqli olanda `/docs` səhifəsi yanlış versiya yazır.
+__version__ = "0.2.0"
 
 # Jurnal burada qurulur, `main.py`-də yox.
 #

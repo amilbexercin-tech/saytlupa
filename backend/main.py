@@ -21,6 +21,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from . import analiz as analiz_xidmeti
 from . import builder, cache, db, hadise, izleme, llm, muqayise, qapi, rag, sebeke
+from . import __version__
 from .config import ayarlar
 from .schemas import (
     AnalizBasladi,
@@ -86,7 +87,7 @@ async def omur(app: FastAPI):
 app = FastAPI(
     title="SaytLupa",
     description="Sayt analiz və söhbət agenti",
-    version="0.2.0",
+    version=__version__,
     lifespan=omur,
 )
 
