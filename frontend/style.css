@@ -70,6 +70,14 @@ h1 {
   font-size: 34px; margin: 0 0 4px; letter-spacing: -0.8px;
   color: var(--ust-metn);
   text-shadow: 0 2px 24px rgba(79, 140, 255, 0.28);
+  display: flex; align-items: center; gap: 12px;
+}
+
+/* Loqo mətnlə birlikdə böyüyür (`em`), ona görə başlıq ölçüsü dəyişəndə
+   nisbət pozulmur. Kölgə h1-in öz parıltısı ilə eyni rəngdədir. */
+.loqo {
+  width: 1.06em; height: 1.06em; flex: none;
+  filter: drop-shadow(0 2px 14px rgba(79, 140, 255, 0.45));
 }
 h2 { font-size: 17px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
 h3 { font-size: 14px; margin: 18px 0 8px; color: var(--solgun); font-weight: 600; }

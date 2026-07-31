@@ -68,6 +68,14 @@ const ACAR_QUTUSU = 'api_acar';
 const acarDugme = el('d-acar');
 const acarOxu = () => localStorage.getItem(ACAR_QUTUSU) || '';
 
+/* 🔑 düyməsinin sadə kilidi.
+   DİQQƏT — bu, TƏHLÜKƏSİZLİK DEYİL: parol bu faylın içindədir və brauzerdə
+   «mənbəyə bax» ilə görünür. Əsl qoruma serverdədir (`backend/qapi.py`) —
+   açarsız sorğu 401 alır, kimsə bu paroldan yan keçsə də heç nə edə bilmir.
+   Məqsəd yalnız odur ki, nümayiş zamanı kimsə təsadüfən düyməyə basıb
+   saxlanmış açarı görməsin və ya silməsin. */
+const ACAR_KILIDI = '1235';
+
 /* Açar varsa sorğu başlığına qoyulur; yoxdursa başlıq göndərilmir. */
 function acarli(basliqlar = {}) {
   const a = acarOxu();
@@ -97,6 +105,14 @@ function acarDugmeniYenile() {
 }
 
 acarDugme.addEventListener('click', () => {
+  if (ACAR_KILIDI) {
+    const parol = prompt('Parol:');
+    if (parol === null) return;                    // ləğv edildi
+    if (parol.trim() !== ACAR_KILIDI) {
+      alert('Parol yanlışdır.');
+      return;
+    }
+  }
   const yeni = prompt('API açarı (boş qoysan silinir):', acarOxu());
   if (yeni === null) return;
   if (yeni.trim()) localStorage.setItem(ACAR_QUTUSU, yeni.trim());
