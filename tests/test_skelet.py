@@ -244,3 +244,18 @@ def test_chunk_embedding_yaz_oxu():
     chunk = db.Chunk(metn="salam")
     chunk.embedding_yaz([0.1, 0.2, 0.3])
     assert chunk.embedding_oxu() == pytest.approx([0.1, 0.2, 0.3])
+
+
+def test_gemma_qeydi_yalniz_islenmirde_gorunur(monkeypatch):
+    """Açıq model başqa qatdadırsa (n8n agenti) onu "yoxdur" kimi göstərmək
+    yanlışdır. Amma qeyd yalnız Gemma bu tətbiqdə çağırılmayanda mənalıdır."""
+    from backend.config import ayarlar
+
+    monkeypatch.setattr(ayarlar, "gemma_qeydi", "n8n agentində")
+    monkeypatch.setattr(ayarlar, "anthropic_api_key", "var")
+    monkeypatch.setattr(ayarlar, "rerank", "gemini")
+    assert muvekkil.get("/api/health").json()["gemma_qeydi"] == "n8n agentində"
+
+    # Gemma həqiqətən bu tətbiqdə lazımdırsa qeyd göstərilmir — vəziyyət özü danışır
+    monkeypatch.setattr(ayarlar, "rerank", "gemma")
+    assert muvekkil.get("/api/health").json()["gemma_qeydi"] == ""

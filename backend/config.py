@@ -64,6 +64,12 @@ class Ayarlar(BaseSettings):
     max_pages: int = 30
     request_timeout: int = 15
 
+    # Açıq model bu tətbiqdə yox, başqa qatda işlədilirsə burada yazılır —
+    # məsələn `n8n agentində`. Onda `/api/health` və interfeys Gemma-nı
+    # "yoxdur" kimi yox, "başqa yerdə var" kimi göstərir. Boş olsa heç nə
+    # dəyişmir. Yalnız mətndir: tətbiq bunu yoxlaya bilmir, sən bəyan edirsən.
+    gemma_qeydi: str = ""
+
     # Re-ranking. Ölçmə (bax `docs/model-secimi.md`) göstərdi ki, bu maşında
     # lokal Gemma re-ranking-i 46-134 saniyə çəkir və nəticəni yaxşılaşdırmır.
     # Ona görə standart olaraq söndürülüb; "gemini" və ya "gemma" ilə açılır.

@@ -134,6 +134,8 @@ def saglamliq() -> Veziyyet:
         gemini=ayarlar.gemini_var,
         gemma=gemma == "hazir",
         gemma_veziyyeti=gemma,
+        # Qeyd yalnız Gemma bu tətbiqdə çağırılmayanda mənalıdır
+        gemma_qeydi=ayarlar.gemma_qeydi if gemma == "islenmir" else "",
         baza_xeberdarligi=baza["xeberdarliq"],
         acar_teleb_olunur=qapi.teleb_olunur(),
     )

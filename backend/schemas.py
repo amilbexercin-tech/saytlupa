@@ -116,6 +116,9 @@ class Veziyyet(BaseModel):
     # Gemma ümumiyyətlə çağırılmır (Claude/Gemini var, re-ranking Gemini-dədir) —
     # yəni əlçatmaz olması nasazlıq deyil.
     gemma_veziyyeti: str = "islenmir"
+    # Açıq model başqa qatda işlədilirsə onun yeri (məs. "n8n agentində").
+    # `GEMMA_QEYDI` ilə təyin olunur; boş olsa interfeys heç nə yazmır.
+    gemma_qeydi: str = ""
     # Postgres gözlənilirdi, amma cavab vermədi — səssiz enmə görünsün deyə
     baza_xeberdarligi: str = ""
     # Serverdə API açarı qoyulubmu — interfeys buna görə açar düyməsini göstərir

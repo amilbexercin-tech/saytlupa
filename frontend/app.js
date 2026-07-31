@@ -120,6 +120,16 @@ const GEMMA_ADI = {
 
 function gemmaNisani(v) {
   const veziyyet = v.gemma_veziyyeti || (v.gemma ? 'hazir' : 'elcatmaz');
+
+  /* Açıq model başqa qatda işlədilirsə (məsələn n8n agentində) onu "yoxdur"
+     kimi göstərmək yanlışdır — model var, sadəcə bu prosesdə deyil. Yerini
+     yazıb yaşıl göstəririk ki, nə iddia etdiyimiz açıq olsun. */
+  if (veziyyet === 'islenmir' && v.gemma_qeydi) {
+    return `<span class="nisan" title="Açıq model bu tətbiqdə çağırılmır, `
+      + `${tehlukesiz(v.gemma_qeydi)} işlədilir">`
+      + `<span class="nöqtə var"></span>Gemma: ${tehlukesiz(v.gemma_qeydi)}</span>`;
+  }
+
   if (veziyyet === 'islenmir') {
     return `<span class="nisan" title="Bu qurulumda Gemma çağırılmır — `
       + `re-ranking Gemini ilədir və model zəncirində Claude/Gemini var">`
