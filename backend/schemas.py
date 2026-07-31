@@ -112,6 +112,10 @@ class Veziyyet(BaseModel):
     claude: bool
     gemini: bool
     gemma: bool
+    # `hazir` · `elcatmaz` · `islenmir`. Sonuncu o deməkdir ki, bu qurulumda
+    # Gemma ümumiyyətlə çağırılmır (Claude/Gemini var, re-ranking Gemini-dədir) —
+    # yəni əlçatmaz olması nasazlıq deyil.
+    gemma_veziyyeti: str = "islenmir"
     # Postgres gözlənilirdi, amma cavab vermədi — səssiz enmə görünsün deyə
     baza_xeberdarligi: str = ""
     # Serverdə API açarı qoyulubmu — interfeys buna görə açar düyməsini göstərir

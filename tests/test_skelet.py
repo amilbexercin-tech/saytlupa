@@ -24,6 +24,53 @@ def test_health_cavab_verir():
     assert data["baza"] in ("postgresql", "sqlite")
     assert data["kes"] in ("redis", "yaddas")
     assert "baza_xeberdarligi" in data
+    assert data["gemma_veziyyeti"] in ("hazir", "elcatmaz", "islenmir")
+
+
+# ---------- Gemma vəziyyəti ----------
+
+
+def test_gemma_islenmir_deyilir(monkeypatch):
+    """Claude/Gemini varsa və re-ranking Gemini-dədirsə Gemma çağırılmır.
+
+    Belə halda `false` qaytarmaq yanıldıcıdır — buludda Ollama qəsdən yoxdur.
+    """
+    from backend import main
+    from backend.config import ayarlar
+
+    monkeypatch.setattr(ayarlar, "anthropic_api_key", "var")
+    monkeypatch.setattr(ayarlar, "rerank", "gemini")
+    monkeypatch.setattr(main, "_gemma_var", lambda: (_ for _ in ()).throw(
+        AssertionError("Ollama-ya sorğu atılmamalıdır")))
+
+    assert main._gemma_veziyyeti() == "islenmir"
+
+
+def test_rerank_gemma_olanda_yoxlanilir(monkeypatch):
+    from backend import main
+    from backend.config import ayarlar
+
+    monkeypatch.setattr(ayarlar, "anthropic_api_key", "var")
+    monkeypatch.setattr(ayarlar, "rerank", "gemma")
+
+    monkeypatch.setattr(main, "_gemma_var", lambda: True)
+    assert main._gemma_veziyyeti() == "hazir"
+
+    monkeypatch.setattr(main, "_gemma_var", lambda: False)
+    assert main._gemma_veziyyeti() == "elcatmaz"
+
+
+def test_acar_yoxdursa_gemma_lazimdir(monkeypatch):
+    """Claude və Gemini olmasa Gemma zəncirin sonuncu həlqəsidir."""
+    from backend import main
+    from backend.config import ayarlar
+
+    monkeypatch.setattr(ayarlar, "anthropic_api_key", "")
+    monkeypatch.setattr(ayarlar, "google_api_key", "")
+    monkeypatch.setattr(ayarlar, "rerank", "gemini")
+    monkeypatch.setattr(main, "_gemma_var", lambda: False)
+
+    assert main._gemma_veziyyeti() == "elcatmaz"
 
 
 # ---------- baza seçimi ----------

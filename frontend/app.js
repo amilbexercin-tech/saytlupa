@@ -109,13 +109,32 @@ acarDugme.addEventListener('click', () => {
 const nisan = (ad, aktiv) =>
   `<span class="nisan"><span class="nöqtə ${aktiv ? 'var' : 'yox'}"></span>${ad}</span>`;
 
+/* Gemma üç vəziyyətdədir, ona görə adi «var/yox» nişanı yaramır: bulud
+   qurulumunda Ollama qəsdən yoxdur və qırmızı nöqtə görən adam nəyinsə
+   sındığını düşünür. */
+const GEMMA_ADI = {
+  hazir: 'Gemma',
+  elcatmaz: 'Gemma: əlçatmaz',
+  islenmir: 'Gemma: işlənmir',
+};
+
+function gemmaNisani(v) {
+  const veziyyet = v.gemma_veziyyeti || (v.gemma ? 'hazir' : 'elcatmaz');
+  if (veziyyet === 'islenmir') {
+    return `<span class="nisan" title="Bu qurulumda Gemma çağırılmır — `
+      + `re-ranking Gemini ilədir və model zəncirində Claude/Gemini var">`
+      + `<span class="nöqtə"></span>${GEMMA_ADI.islenmir}</span>`;
+  }
+  return nisan(GEMMA_ADI[veziyyet], veziyyet === 'hazir');
+}
+
 fetch('/api/health').then((c) => c.json()).then((v) => {
   const setirler = [
     nisan('Baza: ' + v.baza, true),
     nisan('Keş: ' + v.kes, true),
     nisan('Claude', v.claude),
     nisan('Gemini', v.gemini),
-    nisan('Gemma', v.gemma),
+    gemmaNisani(v),
   ];
   if (v.baza_xeberdarligi) setirler.push(nisan(v.baza_xeberdarligi, false));
   el('veziyyet').innerHTML = setirler.join('');

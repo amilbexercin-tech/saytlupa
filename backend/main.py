@@ -54,6 +54,28 @@ def _gemma_var() -> bool:
         return False
 
 
+def _gemma_lazimdir() -> bool:
+    """Bu qurulumda Gemma ümumiyyətlə işə düşürmü?
+
+    İki hal var: re-ranking ona qurulubsa, ya da güclü modellərin heç biri
+    yoxdursa (Gemma model zəncirinin sonuncu həlqəsidir). Hər ikisi yoxdursa
+    Gemma heç vaxt çağırılmır və onun əlçatmazlığı nasazlıq deyil.
+    """
+    return ayarlar.rerank == "gemma" or not (ayarlar.claude_var or ayarlar.gemini_var)
+
+
+def _gemma_veziyyeti() -> str:
+    """`hazir` · `elcatmaz` · `islenmir`.
+
+    Sadəcə `false` qaytarmaq yanıldıcıdır: buludda Ollama qəsdən yoxdur və
+    `false` görən adam nəyinsə sındığını düşünür. `islenmir` isə vəziyyəti
+    olduğu kimi deyir. Üstəlik bu halda Ollama-ya sorğu da atılmır.
+    """
+    if not _gemma_lazimdir():
+        return "islenmir"
+    return "hazir" if _gemma_var() else "elcatmaz"
+
+
 @asynccontextmanager
 async def omur(app: FastAPI):
     db.baza_qur()
@@ -103,12 +125,14 @@ async def tehlukesizlik_basliqlari(sorgu, sonraki):
 @app.get("/api/health", response_model=Veziyyet)
 def saglamliq() -> Veziyyet:
     baza = db.veziyyet()
+    gemma = _gemma_veziyyeti()
     return Veziyyet(
         baza=baza["baza"],
         kes=cache.veziyyet()["kes"],
         claude=ayarlar.claude_var,
         gemini=ayarlar.gemini_var,
-        gemma=_gemma_var(),
+        gemma=gemma == "hazir",
+        gemma_veziyyeti=gemma,
         baza_xeberdarligi=baza["xeberdarliq"],
         acar_teleb_olunur=qapi.teleb_olunur(),
     )
