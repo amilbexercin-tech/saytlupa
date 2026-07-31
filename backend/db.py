@@ -7,6 +7,8 @@ SQLite-a keçir və embedding-lər mətn kimi saxlanır.
 from __future__ import annotations
 
 import json
+import logging
+import time
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -25,13 +27,16 @@ from sqlalchemy.orm import DeclarativeBase, Session, relationship, sessionmaker
 
 from .config import ayarlar
 
+log = logging.getLogger("saytlupa")
+
 EMBEDDING_OLCUSU = 768
 
+# Postgres gözlənilərkən cəhdlər arasındakı fasilə
+GOZLEME_ADDIMI = 2.0
 
-def _movcud(url: str) -> bool:
-    """Verilən bazaya qoşulmaq mümkündürmü?"""
-    if not url:
-        return False
+
+def _qosulur(url: str) -> bool:
+    """Bir dəfəlik qoşulma sınağı."""
     try:
         sinaq = create_engine(url, pool_pre_ping=True)
         with sinaq.connect() as qosulma:
@@ -42,8 +47,39 @@ def _movcud(url: str) -> bool:
         return False
 
 
-POSTGRES = _movcud(ayarlar.database_url)
+def _movcud(url: str, gozleme: float = 0.0) -> bool:
+    """Verilən bazaya qoşulmaq mümkündürmü?
+
+    `gozleme` saniyə verilsə, alınmayana qədər təkrar cəhd edilir. Bu, Docker
+    Compose üçündür: `api` konteyneri `db`-dən tez qalxa bilər və bir dəfəlik
+    yoxlama uğursuz olsa tətbiq **ömrünün sonuna qədər** SQLite-da işləyərdi
+    (`POSTGRES` modul sabitidir, sonradan dəyişmir).
+    """
+    if not url:
+        return False
+
+    son = time.monotonic() + gozleme
+    while True:
+        if _qosulur(url):
+            return True
+        if time.monotonic() >= son:
+            return False
+        log.info("Postgres hələ hazır deyil — %s san sonra yenidən", GOZLEME_ADDIMI)
+        time.sleep(GOZLEME_ADDIMI)
+
+
+POSTGRES = _movcud(ayarlar.database_url, ayarlar.db_gozleme_saniye)
 DB_URL = ayarlar.database_url if POSTGRES else ayarlar.sqlite_yolu
+
+# Səssiz enmə ən təhlükəli haldır: `DATABASE_URL` yazılıb, amma baza cavab
+# vermirsə layihə SQLite-da işləyir və heç kim fərqinə varmır — vektor axtarışı
+# Python tərəfə keçir, köhnə Postgres məlumatı isə görünmür.
+SESSIZ_ENDI = bool(ayarlar.database_url) and not POSTGRES
+if SESSIZ_ENDI:
+    log.warning(
+        "DATABASE_URL təyin edilib, amma baza cavab vermədi — SQLite-a keçildi. "
+        "Postgres gözlənilməlidirsə `DB_GOZLEME_SANIYE` dəyərini artır."
+    )
 
 engine = create_engine(
     DB_URL,
@@ -256,4 +292,12 @@ def sessiya() -> Session:
 
 
 def veziyyet() -> dict:
-    return {"baza": "postgresql" if POSTGRES else "sqlite", "url_sxemi": DB_URL.split("://")[0]}
+    return {
+        "baza": "postgresql" if POSTGRES else "sqlite",
+        "url_sxemi": DB_URL.split("://")[0],
+        "xeberdarliq": (
+            "DATABASE_URL təyin edilib, amma baza cavab vermədi — SQLite işlədilir."
+            if SESSIZ_ENDI
+            else ""
+        ),
+    }

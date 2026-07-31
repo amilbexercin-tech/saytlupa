@@ -134,7 +134,8 @@ async def yoxla(site_id: int, rag_yenile: bool = True) -> dict:
         url, domain = sayt.url, sayt.domain
 
     kohne = await asyncio.to_thread(_hashlar, site_id)
-    sehifeler = await crawler.gez(url, max_sehife=ayarlar.max_pages)
+    hedef = ayarlar.max_pages
+    sehifeler = await crawler.gez(url, max_sehife=hedef)
     yeni_hash = {p["url"]: p["hash"] for p in sehifeler}
 
     if not sehifeler:
@@ -144,19 +145,27 @@ async def yoxla(site_id: int, rag_yenile: bool = True) -> dict:
         return {
             "site_id": site_id, "url": url, "domain": domain,
             "deyisdi": False, "yeni": [], "deyisen": [], "silinen": [],
-            "yoxlanan_sehife": 0, "xulase": "sayt gəzilə bilmədi",
+            "yoxlanan_sehife": 0, "limite_catdi": False,
+            "xulase": "sayt gəzilə bilmədi",
             "qeyd": "Səhifə yığılmadı — sayt bağlıdır və ya robots.txt qadağan edir",
             "telegram_chat_id": _telegram_id(site_id),
         }
 
+    # Gəziş limitə dayanıbsa görünməyən səhifə "silinib" sayıla bilməz — sadəcə
+    # ona növbə çatmayıb. Belə halda yalnız yeni və dəyişən səhifələr sayılır.
+    limite_catdi = len(sehifeler) >= hedef
+
     yeni = sorted(set(yeni_hash) - set(kohne))
-    silinen = sorted(set(kohne) - set(yeni_hash))
+    silinen = [] if limite_catdi else sorted(set(kohne) - set(yeni_hash))
     deyisen = sorted(
         u for u, h in yeni_hash.items() if u in kohne and kohne[u] and kohne[u] != h
     )
     deyisdi = bool(yeni or deyisen or silinen)
 
     await asyncio.to_thread(analiz.sehifeleri_yaz, site_id, sehifeler)
+    # Yoxa çıxanlar bazadan da silinir — yoxsa eyni xəbər hər yoxlamada təkrarlanır
+    if silinen:
+        await asyncio.to_thread(analiz.sehifeleri_sil, site_id, silinen)
     if deyisdi and rag_yenile:
         await asyncio.to_thread(rag.qur, site_id)
 
@@ -173,6 +182,8 @@ async def yoxla(site_id: int, rag_yenile: bool = True) -> dict:
         "deyisen": deyisen[:20],
         "silinen": silinen[:20],
         "yoxlanan_sehife": len(sehifeler),
+        # Limitə çatıbsa silinmə hesablanmayıb — nəticəni oxuyan bunu bilməlidir
+        "limite_catdi": limite_catdi,
         "xulase": xulase,
         "yoxlama_tarixi": datetime.now(timezone.utc).isoformat(),
         "telegram_chat_id": _telegram_id(site_id),

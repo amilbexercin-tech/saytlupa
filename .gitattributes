@@ -1,0 +1,21 @@
+# Sətir sonluqları.
+#
+# Windows-da işləyirik, amma image Linux-da qurulur. `Dockerfile`-ın `CMD`
+# sətri qabıq formasındadır (`uvicorn ... --port ${PORT:-8000}`) — fayl CRLF ilə
+# getsə sətrin sonundakı `\r` əmrin bir hissəsi sayılır və konteyner
+# "command not found" ilə sınır. Sazlaması çətin, səbəbi görünməyən xətadır.
+#
+# Ona görə bu fayllar həmişə LF ilə saxlanılır.
+* text=auto eol=lf
+
+Dockerfile      text eol=lf
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+Caddyfile       text eol=lf
+
+# İkili fayllar toxunulmamalıdır
+*.png binary
+*.jpg binary
+*.pdf binary
+*.zip binary

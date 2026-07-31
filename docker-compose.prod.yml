@@ -1,0 +1,133 @@
+# SaytLupa — serverdə (DigitalOcean Droplet, 2 GB RAM).
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml logs -f api
+#
+# Lokal `docker-compose.yml`-dan fərqi:
+#   · `api` xidməti burada var (lokalda uvicorn əl ilə işə salınır)
+#   · `host.docker.internal` yoxdur — konteynerlər bir-birini **xidmət adı** ilə
+#     tapır (`http://api:8000`), bu, Docker-in daxili şəbəkəsidir
+#   · yalnız Caddy xaricə port açır; qalan hər şey daxili şəbəkədə qalır
+#   · profillər yoxdur — serverdə hamısı birlikdə işləməlidir
+#
+# Açarlar `.env` faylındadır və repoya düşmür — serverə əl ilə qoyulur.
+
+# Layihə adı MÜTLƏQ ayrıdır. Docker standart olaraq adı qovluqdan götürür, yəni
+# `docker-compose.yml` və bu fayl hər ikisi `saytlupa` adlanır və **eyni
+# volume-ları paylaşır**. Lokal sınaqda məhz bu baş verdi: `pgdata` artıq lokal
+# dəstin köhnə parolu ilə yaradılmışdı, Postgres isə parolu yalnız ilk qalxışda
+# qoyur — nə API, nə n8n bazaya girə bildi. Ayrı ad ilə prod öz təmiz
+# volume-larını alır və lokal dəstə toxunmur.
+name: saytlupa-prod
+
+services:
+  # ---------------------------------------------------------------- baza
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-saytlupa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env-də yazılmalıdır}
+      POSTGRES_DB: ${POSTGRES_DB:-saytlupa}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saytlupa}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Port xaricə AÇILMIR — yalnız daxili şəbəkədən əlçatandır.
+    # Lokalda 5432 açıq idi, serverdə bu, bazanı internetə çıxarmaq deməkdir.
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- tətbiq
+  api:
+    build: .
+    env_file: .env
+    environment:
+      # Xidmət adları ilə qoşulma — `localhost` konteynerin özüdür
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-saytlupa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-saytlupa}
+      REDIS_URL: redis://redis:6379/0
+      # `depends_on: service_healthy` bazanın hazır olmasını gözləyir, amma
+      # şəbəkə gecikməsi hələ ola bilər — 60 saniyə ehtiyat (bax `db.py`).
+      DB_GOZLEME_SANIYE: 60
+      # Ollama serverdə yoxdur; Gemma onsuz da işlədilmir (RERANK=gemini)
+      OLLAMA_BASE_URL: http://127.0.0.1:1
+    volumes:
+      - saytlupa-data:/app/data
+      - saytlupa-storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- n8n
+  n8n:
+    image: n8nio/n8n:latest
+    environment:
+      N8N_PORT: 5678
+      GENERIC_TIMEZONE: Asia/Baku
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_RUNNERS_ENABLED: "true"
+      # Caddy arxasında işlədiyi üçün n8n öz ünvanını bilməlidir — webhook
+      # linkləri bununla qurulur.
+      N8N_HOST: ${N8N_HOST:?N8N_HOST .env-də yazılmalıdır}
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://${N8N_HOST}/
+      N8N_PROXY_HOPS: 1
+      # n8n-in öz jurnalı üçün eyni Postgres
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: db
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-saytlupa}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-saytlupa}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_POSTGRESDB_SCHEMA: n8n
+      # Workflow-larda `{{ $env.SAYTLUPA_API }}` və `{{ $env.API_ACAR }}`
+      # işlətmək üçün — ünvan və açar workflow JSON-una yazılmır.
+      # `N8N_BLOCK_ENV_ACCESS_IN_NODE` açıq olsa ifadələrdə `$env` bağlanır.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      SAYTLUPA_API: http://api:8000
+      API_ACAR: ${API_ACAR}
+    volumes:
+      - n8ndata:/home/node/.n8n
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- HTTPS
+  # Caddy Let's Encrypt sertifikatını özü alır və yeniləyir — konfiqurasiya
+  # tələb etmir, sadəcə ünvan doğru olmalıdır.
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    environment:
+      SAYT_HOST: ${SAYT_HOST:?SAYT_HOST .env-də yazılmalıdır}
+      N8N_HOST: ${N8N_HOST}
+    depends_on:
+      - api
+      - n8n
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  n8ndata:
+  caddydata:
+  caddyconfig:
+  saytlupa-data:
+  saytlupa-storage:

@@ -18,6 +18,7 @@ from urllib.robotparser import RobotFileParser
 import httpx
 from bs4 import BeautifulSoup
 
+from . import sebeke
 from .config import ayarlar
 from .collectors.base import BASLIQLAR, domen, kok_url, mutleq_url
 from .collectors.sehife import elaqe_cixart
@@ -69,7 +70,9 @@ async def robots_qaydalari(kok: str) -> RobotFileParser:
     oxuyucu = RobotFileParser()
     oxuyucu.set_url(f"{kok}/robots.txt")
     try:
-        async with httpx.AsyncClient(headers=BASLIQLAR, timeout=8, verify=False) as m:
+        async with httpx.AsyncClient(
+            headers=BASLIQLAR, timeout=8, verify=False, event_hooks=sebeke.HOOKLAR
+        ) as m:
             cavab = await m.get(f"{kok}/robots.txt")
         oxuyucu.parse(cavab.text.splitlines() if cavab.status_code == 200 else [])
     except Exception:
@@ -84,7 +87,8 @@ async def _sitemap_unvanlari(kok: str, kok_domen: str, limit: int) -> list[str]:
     baxilan: set[str] = set()
 
     async with httpx.AsyncClient(
-        headers=BASLIQLAR, timeout=12, follow_redirects=True, verify=False
+        headers=BASLIQLAR, timeout=12, follow_redirects=True, verify=False,
+        event_hooks=sebeke.HOOKLAR,
     ) as musteri:
         while gozleyen and len(tapilan) < limit:
             unvan = gozleyen.pop(0)
@@ -173,7 +177,7 @@ async def gez(
 
     async with httpx.AsyncClient(
         headers=BASLIQLAR, timeout=ayarlar.request_timeout,
-        follow_redirects=True, verify=False,
+        follow_redirects=True, verify=False, event_hooks=sebeke.HOOKLAR,
     ) as musteri:
         while novbe and len(sehifeler) < max_sehife:
             dest = []

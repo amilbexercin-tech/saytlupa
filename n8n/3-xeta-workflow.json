@@ -7,7 +7,10 @@
       "name": "Xəta tetikleyicisi",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
-      "position": [-560, 300]
+      "position": [
+        -560,
+        300
+      ]
     },
     {
       "parameters": {
@@ -17,22 +20,39 @@
       "name": "Xətanı formatla",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-340, 300]
+      "position": [
+        -340,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8000/api/xetalar",
+        "url": "={{ $env.SAYTLUPA_API }}/api/xetalar",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ menbe: $json.menbe, workflow: $json.workflow, xeta_metni: $json.xeta_metni }) }}",
-        "options": { "timeout": 20000 }
+        "options": {
+          "timeout": 20000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Acar",
+              "value": "={{ $env.API_ACAR }}"
+            }
+          ]
+        }
       },
       "id": "wf3-yaz",
       "name": "job_errors-a yaz",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-120, 300],
+      "position": [
+        -120,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
@@ -42,21 +62,59 @@
       "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
         "text": "=❌ <b>n8n workflow sındı</b>\n\n<b>{{ $('Xətanı formatla').item.json.workflow }}</b>\n{{ $('Xətanı formatla').item.json.xeta_metni }}",
-        "additionalFields": { "parse_mode": "HTML", "appendAttribution": false }
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "appendAttribution": false
+        }
       },
       "id": "wf3-telegram",
       "name": "Telegram xəbərdarlığı",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [100, 300],
+      "position": [
+        100,
+        300
+      ],
       "onError": "continueRegularOutput"
     }
   ],
   "connections": {
-    "Xəta tetikleyicisi": { "main": [[{ "node": "Xətanı formatla", "type": "main", "index": 0 }]] },
-    "Xətanı formatla": { "main": [[{ "node": "job_errors-a yaz", "type": "main", "index": 0 }]] },
-    "job_errors-a yaz": { "main": [[{ "node": "Telegram xəbərdarlığı", "type": "main", "index": 0 }]] }
+    "Xəta tetikleyicisi": {
+      "main": [
+        [
+          {
+            "node": "Xətanı formatla",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xətanı formatla": {
+      "main": [
+        [
+          {
+            "node": "job_errors-a yaz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "job_errors-a yaz": {
+      "main": [
+        [
+          {
+            "node": "Telegram xəbərdarlığı",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }

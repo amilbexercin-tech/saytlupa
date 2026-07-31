@@ -1,0 +1,34 @@
+# Image-ə düşməməli olanlar. Ölçüdən başqa təhlükəsizlik məsələsidir:
+# `.env` açarları saxlayır və heç vaxt image-in içinə girməməlidir —
+# serverdə `env_file` ilə xaricdən verilir.
+
+.env
+*.env
+!.env.example
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.gitignore
+.claude-flow/
+.gstack/
+
+# İş nəticələri — konteynerdə volume kimi bağlanır
+data/
+storage/
+*.db
+*.sqlite3
+
+# Serverdə lazım olmayanlar
+tests/
+docs/
+n8n/
+LAYIHE-HAQQINDA/
+scripts/
+README.md
+docker-compose.yml
+docker-compose.prod.yml
+Dockerfile
+pytest.ini

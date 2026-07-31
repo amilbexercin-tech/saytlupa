@@ -12,46 +12,82 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-620, 300],
+      "position": [
+        -620,
+        300
+      ],
       "webhookId": "8f2c1a10-1111-4a10-9a01-saytlupa0001"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8000/api/analyze",
+        "url": "={{ $env.SAYTLUPA_API }}/api/analyze",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ url: $json.body.url, max_sehife: $json.body.max_sehife || 10 }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Acar",
+              "value": "={{ $env.API_ACAR }}"
+            }
+          ]
+        }
       },
       "id": "wf1-basla",
       "name": "Analizi başlat",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-400, 300],
+      "position": [
+        -400,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 3000
     },
     {
-      "parameters": { "amount": 15 },
+      "parameters": {
+        "amount": 15
+      },
       "id": "wf1-gozle",
       "name": "15 saniyə gözlə",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [-180, 300],
+      "position": [
+        -180,
+        300
+      ],
       "webhookId": "8f2c1a10-2222-4a10-9a01-saytlupa0001"
     },
     {
       "parameters": {
-        "url": "=http://host.docker.internal:8000/api/analyze/{{ $('Analizi başlat').item.json.analiz_id }}",
-        "options": { "timeout": 30000 }
+        "url": "={{ $env.SAYTLUPA_API }}/api/analyze/{{ $('Analizi başlat').item.json.analiz_id }}",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Acar",
+              "value": "={{ $env.API_ACAR }}"
+            }
+          ]
+        }
       },
       "id": "wf1-status",
       "name": "Statusu yoxla",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [40, 300],
+      "position": [
+        40,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 3000
@@ -70,7 +106,11 @@
               "id": "wf1-sert-1",
               "leftValue": "={{ ['hazir', 'xeta'].includes($json.status) }}",
               "rightValue": "",
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -82,7 +122,10 @@
       "name": "Analiz bitdi?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [260, 300]
+      "position": [
+        260,
+        300
+      ]
     },
     {
       "parameters": {
@@ -92,7 +135,10 @@
       "name": "Nəticəni formatla",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 200]
+      "position": [
+        480,
+        200
+      ]
     },
     {
       "parameters": {
@@ -106,7 +152,10 @@
       "name": "Bazaya yaz",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [700, 200],
+      "position": [
+        700,
+        200
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -119,23 +168,100 @@
       "name": "Cavab qaytar",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [920, 200]
+      "position": [
+        920,
+        200
+      ]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "Analizi başlat", "type": "main", "index": 0 }]] },
-    "Analizi başlat": { "main": [[{ "node": "15 saniyə gözlə", "type": "main", "index": 0 }]] },
-    "15 saniyə gözlə": { "main": [[{ "node": "Statusu yoxla", "type": "main", "index": 0 }]] },
-    "Statusu yoxla": { "main": [[{ "node": "Analiz bitdi?", "type": "main", "index": 0 }]] },
-    "Analiz bitdi?": {
+    "Webhook": {
       "main": [
-        [{ "node": "Nəticəni formatla", "type": "main", "index": 0 }],
-        [{ "node": "15 saniyə gözlə", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Analizi başlat",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Nəticəni formatla": { "main": [[{ "node": "Bazaya yaz", "type": "main", "index": 0 }]] },
-    "Bazaya yaz": { "main": [[{ "node": "Cavab qaytar", "type": "main", "index": 0 }]] }
+    "Analizi başlat": {
+      "main": [
+        [
+          {
+            "node": "15 saniyə gözlə",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 saniyə gözlə": {
+      "main": [
+        [
+          {
+            "node": "Statusu yoxla",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Statusu yoxla": {
+      "main": [
+        [
+          {
+            "node": "Analiz bitdi?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analiz bitdi?": {
+      "main": [
+        [
+          {
+            "node": "Nəticəni formatla",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "15 saniyə gözlə",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nəticəni formatla": {
+      "main": [
+        [
+          {
+            "node": "Bazaya yaz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bazaya yaz": {
+      "main": [
+        [
+          {
+            "node": "Cavab qaytar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }

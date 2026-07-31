@@ -1,0 +1,25 @@
+# Yalnız LOKAL sınaq üçün əlavə qat — prod faylının üstünə qoyulur:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.lokal.yml up -d
+#
+# Nə edir: host maşındakı Ollama-nı konteynerlərə göstərir.
+#
+# Niyə ayrıca fayl? Konteynerin içində `localhost` konteynerin **özüdür**, host
+# maşın deyil — ona görə `host.docker.internal` lazımdır. Amma bu ad serverdə
+# mövcud deyil və prod faylına yazılsa yerləşdirmə pozulardı. Ayrı qat prod
+# faylını toxunulmaz saxlayır: serverə çıxanda bu fayl sadəcə işlədilmir.
+#
+# QEYD: n8n-in Ollama bağlantısı workflow JSON-unda yox, n8n **credential**-ində
+# saxlanılır. `4-gemma-agenti.json`-u import edəndən sonra n8n-də Ollama
+# credential-ı yaradıb ünvanını `http://host.docker.internal:11434` qoymalısan.
+
+services:
+  api:
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  n8n:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

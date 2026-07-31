@@ -23,6 +23,37 @@ def test_health_cavab_verir():
     data = cavab.json()
     assert data["baza"] in ("postgresql", "sqlite")
     assert data["kes"] in ("redis", "yaddas")
+    assert "baza_xeberdarligi" in data
+
+
+# ---------- baza seçimi ----------
+
+
+def test_postgres_hazir_olana_qeder_gozlenilir(monkeypatch):
+    """Docker-də `api` konteyneri `db`-dən tez qalxa bilər.
+
+    Bir dəfəlik yoxlama uğursuz olsa layihə ömrünün sonuna qədər SQLite-da
+    işləyirdi — `POSTGRES` modul sabitidir, sonradan dəyişmir.
+    """
+    cehd = {"say": 0}
+
+    def yalanci(url: str) -> bool:
+        cehd["say"] += 1
+        return cehd["say"] >= 3
+
+    monkeypatch.setattr(db, "_qosulur", yalanci)
+    monkeypatch.setattr(db, "GOZLEME_ADDIMI", 0)
+
+    assert db._movcud("postgresql://x", gozleme=10) is True
+    assert cehd["say"] == 3
+
+
+def test_gozleme_bitende_sqlitea_kecilir(monkeypatch):
+    monkeypatch.setattr(db, "_qosulur", lambda url: False)
+    monkeypatch.setattr(db, "GOZLEME_ADDIMI", 0)
+
+    assert db._movcud("postgresql://x", gozleme=0) is False
+    assert db._movcud("", gozleme=10) is False  # ünvan yoxdursa gözləmirik
 
 
 def test_ana_sehife_acilir():
@@ -37,7 +68,6 @@ def test_ana_sehife_acilir():
 def test_analiz_istek_duzgun_url():
     istek = AnalizIstek(url="https://example.com")
     assert istek.max_sehife == 30
-    assert istek.rag_qur is True
 
 
 def test_analiz_istek_yanlis_sxem():

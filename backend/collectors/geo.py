@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 
+from .. import sebeke
 from ..decorators import cached, retry, safe_collector, timed
 from .base import BASLIQLAR, ip_tap, tam_host
 
@@ -16,6 +17,8 @@ SAHELER = "status,message,country,countryCode,regionName,city,lat,lon,isp,org,as
 @cached(saniye=86400)
 @retry(cehd=2, gozleme=1.0)
 async def topla(url: str) -> dict:
+    # Daxili host analiz edilirsə IP-si hesabata düşməməlidir
+    sebeke.yoxla(url)
     host = tam_host(url)
     ip = ip_tap(host)
 

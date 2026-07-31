@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 class AnalizIstek(BaseModel):
     url: HttpUrl
     max_sehife: int = Field(default=30, ge=1, le=100)
-    rag_qur: bool = True
 
     @field_validator("url")
     @classmethod
@@ -44,13 +43,6 @@ class XetaIstek(BaseModel):
 
 
 # ---------- Çıxış ----------
-
-
-class CollectorNetice(BaseModel):
-    ad: str
-    ugurlu: bool
-    data: dict[str, Any] = {}
-    xeta: str = ""
 
 
 class AIHesabat(BaseModel):
@@ -120,3 +112,7 @@ class Veziyyet(BaseModel):
     claude: bool
     gemini: bool
     gemma: bool
+    # Postgres gözlənilirdi, amma cavab vermədi — səssiz enmə görünsün deyə
+    baza_xeberdarligi: str = ""
+    # Serverdə API açarı qoyulubmu — interfeys buna görə açar düyməsini göstərir
+    acar_teleb_olunur: bool = False

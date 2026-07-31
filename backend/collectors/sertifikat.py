@@ -7,6 +7,7 @@ import socket
 import ssl
 from datetime import datetime, timezone
 
+from .. import sebeke
 from ..decorators import cached, safe_collector, timed
 from .base import tam_host
 
@@ -59,4 +60,7 @@ async def topla(url: str) -> dict:
     host = tam_host(url)
     if not url.startswith("https"):
         return {"etibarli": False, "qeyd": "Sayt HTTPS istifadə etmir"}
+    # Bu toplayıcı httpx-dən yox, birbaşa soketdən istifadə edir — SSRF
+    # qoruması ona görə əl ilə çağırılır (bax `sebeke` modulu).
+    sebeke.yoxla(url)
     return await asyncio.to_thread(_oxu, host)

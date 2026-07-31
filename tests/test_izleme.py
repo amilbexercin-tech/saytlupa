@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import db, izleme
+from backend import analiz, db, izleme
 from backend.main import app
 
 muvekkil = TestClient(app)
@@ -145,6 +145,80 @@ def test_bos_gezis_silinme_kimi_oxunmur(sinaq_sayti, monkeypatch):
     assert "gəzilə bilmədi" in netice["xulase"]
 
 
+def test_yoxa_cixan_sehife_ikinci_defe_xeber_vermir(sinaq_sayti, monkeypatch):
+    """Silinən səhifə bazadan da getməlidir.
+
+    `sehifeleri_yaz` yalnız əlavə edib yenilədiyi üçün yoxa çıxan səhifə bazada
+    qalırdı və hər yoxlamada yenidən "silinib" kimi hesablanırdı — Telegram-a
+    eyni xəbər hər gün gedirdi.
+    """
+    izleme.elave_et(sinaq_sayti)
+    monkeypatch.setattr(izleme.rag, "qur", lambda site_id, **k: {"chunk": 0})
+
+    async def iki(url, **kwargs):
+        return [
+            _sehife("https://izleme-sinaq.az/", "aaa"),
+            _sehife("https://izleme-sinaq.az/kohne", "bbb"),
+        ]
+
+    async def bir(url, **kwargs):
+        return [_sehife("https://izleme-sinaq.az/", "aaa")]
+
+    monkeypatch.setattr(izleme.crawler, "gez", iki)
+    asyncio.run(izleme.yoxla(sinaq_sayti))
+
+    monkeypatch.setattr(izleme.crawler, "gez", bir)
+    birinci = asyncio.run(izleme.yoxla(sinaq_sayti))
+    assert birinci["silinen"] == ["https://izleme-sinaq.az/kohne"]
+    assert birinci["deyisdi"] is True
+
+    ikinci = asyncio.run(izleme.yoxla(sinaq_sayti))
+    assert ikinci["silinen"] == []
+    assert ikinci["deyisdi"] is False
+    assert ikinci["xulase"] == "dəyişiklik yoxdur"
+
+
+def test_limite_catanda_silinme_hesablanmir(sinaq_sayti, monkeypatch):
+    """Gəziş limitə dayanıbsa görünməyən səhifə silinmiş sayıla bilməz —
+    sadəcə ona növbə çatmayıb."""
+    izleme.elave_et(sinaq_sayti)
+    monkeypatch.setattr(izleme.rag, "qur", lambda site_id, **k: {"chunk": 0})
+    monkeypatch.setattr(izleme.ayarlar, "max_pages", 2)
+
+    async def uc(url, **kwargs):
+        return [_sehife(f"https://izleme-sinaq.az/{i}", f"h{i}") for i in range(3)]
+
+    async def iki(url, **kwargs):
+        return [_sehife(f"https://izleme-sinaq.az/{i}", f"h{i}") for i in range(2)]
+
+    monkeypatch.setattr(izleme.crawler, "gez", uc)
+    asyncio.run(izleme.yoxla(sinaq_sayti))
+
+    monkeypatch.setattr(izleme.crawler, "gez", iki)
+    netice = asyncio.run(izleme.yoxla(sinaq_sayti))
+
+    assert netice["limite_catdi"] is True
+    assert netice["silinen"] == []
+
+
+def test_sehifeleri_sil_sayi_qaytarir(sinaq_sayti):
+    analiz.sehifeleri_yaz(
+        sinaq_sayti,
+        [_sehife("https://izleme-sinaq.az/a", "1"), _sehife("https://izleme-sinaq.az/b", "2")],
+    )
+
+    assert analiz.sehifeleri_sil(sinaq_sayti, []) == 0
+    assert analiz.sehifeleri_sil(sinaq_sayti, ["https://izleme-sinaq.az/a"]) == 1
+    # İkinci dəfə silinəcək bir şey qalmır
+    assert analiz.sehifeleri_sil(sinaq_sayti, ["https://izleme-sinaq.az/a"]) == 0
+
+    with db.sessiya() as s:
+        qalan = [
+            p.url for p in s.query(db.Sehife).filter(db.Sehife.site_id == sinaq_sayti)
+        ]
+    assert qalan == ["https://izleme-sinaq.az/b"]
+
+
 def test_yoxla_olmayan_sayt():
     assert asyncio.run(izleme.yoxla(999999)).get("tapilmadi") is True
 
@@ -235,14 +309,38 @@ def test_workflow_json_duzgundur(fayl):
                     assert baglanti["node"] in adlar, f"olmayan node-a bağlantı: {baglanti['node']}"
 
 
-def test_workflowlar_duzgun_ünvana_gedir():
-    """Bütün HTTP node-ları FastAPI-yə (host.docker.internal:8000) baxmalıdır."""
+def test_workflowlar_unvani_muhit_deyisenden_alir():
+    """Ünvan workflow-a yazılmamalıdır.
+
+    Əvvəl `host.docker.internal:8000` sabit yazılırdı — lokalda işləyir, serverdə
+    yox: Docker daxilində xidmətlər bir-birini `http://api:8000` kimi tanıyır.
+    İndi ünvan `SAYTLUPA_API` mühit dəyişənindən gəlir, yəni eyni workflow həm
+    lokalda, həm serverdə işləyir.
+    """
     for fayl in WORKFLOWLAR:
         data = json.loads((N8N / fayl).read_text(encoding="utf-8"))
         for node in data["nodes"]:
             url = node.get("parameters", {}).get("url", "")
-            if url:
-                assert "8000" in url, f"{fayl} · {node['name']}: gözlənilməz ünvan {url}"
+            if not url:
+                continue
+            assert "$env.SAYTLUPA_API" in url, f"{fayl} · {node['name']}: {url}"
+            assert "host.docker.internal" not in url, f"{fayl} · {node['name']}"
+
+
+def test_workflowlar_api_acarini_gonderir():
+    """Serverdə yazan endpoint-lər açar tələb edir (bax `backend/qapi.py`) —
+    açar workflow JSON-una yazılmır, mühit dəyişənindən gəlir."""
+    for fayl in WORKFLOWLAR:
+        data = json.loads((N8N / fayl).read_text(encoding="utf-8"))
+        for node in data["nodes"]:
+            p = node.get("parameters", {})
+            if not p.get("url"):
+                continue
+            basliqlar = p.get("headerParameters", {}).get("parameters", [])
+            acar = next((b for b in basliqlar if b["name"] == "X-API-Acar"), None)
+            assert acar, f"{fayl} · {node['name']}: açar başlığı yoxdur"
+            assert acar["value"] == "={{ $env.API_ACAR }}", f"{fayl} · {node['name']}"
+            assert p.get("sendHeaders") is True, f"{fayl} · {node['name']}"
 
 
 def test_bos_siyahi_bos_element_yaratmir():

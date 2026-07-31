@@ -27,6 +27,10 @@ class Ayarlar(BaseSettings):
     # İnfrastruktur
     database_url: str = ""
     redis_url: str = ""
+    # Docker Compose-da `api` konteyneri `db`-dən tez qalxa bilər. Bu qədər
+    # saniyə Postgres gözlənilir; 0 olsa bir dəfə yoxlanılıb keçilir (lokal
+    # inkişafda və testlərdə gecikmə olmasın deyə).
+    db_gozleme_saniye: int = 0
 
     # Xarici xidmətlər
     # MCP serveri FastAPI ilə HTTP üzərindən danışır — ağır iş (analiz, RAG)
@@ -41,6 +45,11 @@ class Ayarlar(BaseSettings):
     # yazılır, sadəcə köçürmə əmrində qovluğun yerini istifadəçi özü yazır.
     # SaytLupa bu qovluğa **heç vaxt özü yazmır** — yalnız hazır əmri göstərir.
     cloner_yolu: str = ""
+
+    # Giriş qoruması. Boş olsa heç bir məhdudiyyət yoxdur (lokal inkişaf üçün);
+    # serverdə doldurulur və yazan əməliyyatlar açar tələb edir (bax `qapi.py`).
+    api_acar: str = ""
+    gunluk_sual_limiti: int = 5
 
     # Crawler
     max_pages: int = 30
@@ -68,6 +77,8 @@ class Ayarlar(BaseSettings):
 
 ayarlar = Ayarlar()
 
-# Fayl qovluqları — proqram işə düşəndə hazır olsun
-for alt in ("pages", "archives", "modern", "pdf", "klon"):
+# Fayl qovluqları — proqram işə düşəndə hazır olsun.
+# `pages` burada YOXDUR: səhifələr bazada saxlanılır, fayl sistemində yox —
+# qovluq yaradılırdı, amma heç nə yazılmırdı.
+for alt in ("archives", "modern", "pdf", "klon"):
     (STORAGE / alt).mkdir(parents=True, exist_ok=True)

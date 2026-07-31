@@ -8,6 +8,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 import tldextract
 
+from .. import sebeke
 from ..config import ayarlar
 
 # HTTP başlıqları yalnız ASCII qəbul edir — burada Azərbaycan hərfi olmamalıdır.
@@ -55,5 +56,6 @@ async def getir(
         timeout=timeout or ayarlar.request_timeout,
         follow_redirects=True,
         verify=False,
+        event_hooks=sebeke.HOOKLAR,
     ) as musteri:
         return await musteri.request(metod, url)

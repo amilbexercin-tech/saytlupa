@@ -13,6 +13,7 @@ import time
 import httpx
 from bs4 import BeautifulSoup
 
+from .. import sebeke
 from ..config import ayarlar
 from ..decorators import cached, safe_collector, timed
 from .base import BASLIQLAR
@@ -122,7 +123,7 @@ async def olc_ve_getir(url: str) -> tuple[str, dict, float, int]:
     basla = time.perf_counter()
     async with httpx.AsyncClient(
         headers=BASLIQLAR, timeout=ayarlar.request_timeout,
-        follow_redirects=True, verify=False,
+        follow_redirects=True, verify=False, event_hooks=sebeke.HOOKLAR,
     ) as musteri:
         cavab = await musteri.get(url)
     kecen = time.perf_counter() - basla

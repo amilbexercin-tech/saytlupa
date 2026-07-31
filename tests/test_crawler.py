@@ -116,3 +116,31 @@ def test_hadise_temizlenir():
     assert hadise.aktivdir(1000) is True
     hadise.temizle(1000)
     assert hadise.aktivdir(1000) is False
+
+
+def test_bitmis_novbe_supurulur(monkeypatch):
+    """Brauzersiz analiz (MCP aləti, n8n cron) növbə qoyub getməməlidir.
+
+    Növbəni `analiz.basla` yaradır, əvvəllər isə yalnız SSE bağlananda silinirdi —
+    heç vaxt SSE açılmayan analizlərin növbəsi əbədi qalırdı.
+    """
+    hadise.temizle(1001)
+    hadise.novbe(1001)
+    hadise.bitir(1001)
+    assert hadise.aktivdir(1001) is True  # saxlama müddəti hələ keçməyib
+
+    monkeypatch.setattr(hadise, "SAXLAMA", -1)  # müddət keçmiş kimi
+    hadise.novbe(1002)  # hər hansı hərəkət süpürməni işə salır
+    assert hadise.aktivdir(1001) is False
+
+    hadise.temizle(1002)
+
+
+def test_temizle_bitme_damgasini_da_atir():
+    """SSE ortada bağlansa növbə silinir; damğa qalsa süpürmə çaşardı."""
+    hadise.novbe(1003)
+    hadise.bitir(1003)
+    hadise.temizle(1003)
+
+    assert hadise.aktivdir(1003) is False
+    assert 1003 not in hadise._bitme

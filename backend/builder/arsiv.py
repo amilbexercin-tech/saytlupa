@@ -23,6 +23,7 @@ from urllib.parse import unquote, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from .. import sebeke
 from ..collectors.base import BASLIQLAR, kok_url, mutleq_url
 from ..config import STORAGE
 from ..crawler import robots_qaydalari
@@ -172,7 +173,8 @@ async def arsivle(analiz_id: int) -> dict:
 
     kilid = asyncio.Semaphore(PARALEL)
     async with httpx.AsyncClient(
-        headers=BASLIQLAR, timeout=20, follow_redirects=True, verify=False
+        headers=BASLIQLAR, timeout=20, follow_redirects=True, verify=False,
+        event_hooks=sebeke.HOOKLAR,
     ) as musteri:
         try:
             cavab = await musteri.get(url)

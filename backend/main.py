@@ -9,17 +9,18 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
 from . import analiz as analiz_xidmeti
-from . import builder, cache, db, hadise, izleme, llm, muqayise, rag
+from . import builder, cache, db, hadise, izleme, llm, muqayise, qapi, rag, sebeke
 from .config import ayarlar
 from .schemas import (
     AnalizBasladi,
@@ -33,11 +34,14 @@ from .schemas import (
     XetaIstek,
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger("saytlupa")
+log = logging.getLogger("saytlupa")  # qurulması `backend/__init__.py`-dədir
 
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 SSE_GOZLEME = 30  # saniyə — bu müddətdə hadisə gəlməsə "nəbz" göndərilir
+
+# Pul xərcləyən (model çağıran) endpoint-lər üçün: `API_ACAR` qoyulubsa açar
+# tələb olunur, qoyulmayıbsa heç nə dəyişmir. Bax `qapi.py`.
+ACAR = [Depends(qapi.acar_teleb)]
 
 
 def _gemma_var() -> bool:
@@ -65,26 +69,63 @@ app = FastAPI(
 )
 
 
+# `/api/analyze/{id}/muasir/onizleme` — modelin yazdığı HTML
+ONIZLEME_YOLU = re.compile(r"^/api/analyze/\d+/muasir/onizleme/?$")
+
+
+@app.middleware("http")
+async def tehlukesizlik_basliqlari(sorgu, sonraki):
+    """Təhlükəsizlik başlıqları.
+
+    Əvvəl bunlar Caddy-də idi, amma Railway-də tərs proxy bizim deyil və onun
+    konfiqurasiyasına çatmırıq — ona görə başlıqları tətbiqin özü qoyur. Belə
+    olanda qoruma hostinqdən asılı qalmır: lokalda, Docker-də və Railway-də
+    eynidir.
+
+    `sandbox` yalnız önizləmə yolunda tətbiq olunur. Səbəb: həmin HTML-i model
+    yazır, modelin girişində isə analiz edilən saytın **xam mətni** var — yəni
+    sayt sahibi promptu manipulyasiya edib ora skript saldıra bilər. `sandbox`
+    onu təcrid edir: skript işləmir, forma göndərilmir. Adi səhifələrə tətbiq
+    etsək öz interfeysimiz də sınardı.
+    """
+    cavab = await sonraki(sorgu)
+    cavab.headers.setdefault("X-Content-Type-Options", "nosniff")
+    cavab.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    cavab.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    if ONIZLEME_YOLU.match(sorgu.url.path):
+        cavab.headers["Content-Security-Policy"] = "sandbox"
+    return cavab
+
+
 # ------------------------------------------------------------------ sistem
 
 
 @app.get("/api/health", response_model=Veziyyet)
 def saglamliq() -> Veziyyet:
+    baza = db.veziyyet()
     return Veziyyet(
-        baza=db.veziyyet()["baza"],
+        baza=baza["baza"],
         kes=cache.veziyyet()["kes"],
         claude=ayarlar.claude_var,
         gemini=ayarlar.gemini_var,
         gemma=_gemma_var(),
+        baza_xeberdarligi=baza["xeberdarliq"],
+        acar_teleb_olunur=qapi.teleb_olunur(),
     )
 
 
 # ------------------------------------------------------------------ analiz
 
 
-@app.post("/api/analyze", response_model=AnalizBasladi)
+@app.post("/api/analyze", response_model=AnalizBasladi, dependencies=ACAR)
 async def analiz_basla(istek: AnalizIstek) -> AnalizBasladi:
     """Analizi fonda başladır. Gedişatı `/api/analyze/{id}/axin` ilə izlə."""
+    # Daxili şəbəkə ünvanları rədd edilir (bax `sebeke` modulu). Ad həlli
+    # blokedicidir, ona görə ayrı sapda gedir.
+    sebeb = await asyncio.to_thread(sebeke.unvan_sebebi, str(istek.url))
+    if sebeb:
+        raise HTTPException(400, sebeb)
+
     netice = analiz_xidmeti.basla(str(istek.url), istek.max_sehife)
     return AnalizBasladi(**netice)
 
@@ -152,7 +193,8 @@ def sayt_sehifeleri(site_id: int) -> list[dict]:
 # ------------------------------------------------------------------ söhbət (RAG)
 
 
-@app.post("/api/sites/{site_id}/chat", response_model=SualCavab)
+@app.post("/api/sites/{site_id}/chat", response_model=SualCavab,
+          dependencies=[Depends(qapi.sual_limiti)])
 async def saytla_danis(site_id: int, istek: SualIstek) -> SualCavab:
     """Saytın məzmunu ilə söhbət — cavab mənbə göstərməklə qaytarılır."""
     with db.sessiya() as s:
@@ -180,7 +222,7 @@ def rag_veziyyeti(site_id: int) -> dict:
     }
 
 
-@app.post("/api/sites/{site_id}/rag/yenile")
+@app.post("/api/sites/{site_id}/rag/yenile", dependencies=ACAR)
 async def rag_yenile(site_id: int) -> dict:
     """RAG indeksini yenidən qurur (embedding üsulu dəyişəndə lazımdır)."""
     with db.sessiya() as s:
@@ -204,7 +246,7 @@ def _tehvil(netice: dict) -> dict:
     return netice
 
 
-@app.post("/api/analyze/{analiz_id}/muasir")
+@app.post("/api/analyze/{analiz_id}/muasir", dependencies=ACAR)
 async def muasir_qur(analiz_id: int) -> dict:
     """⚡ Analizə əsasən saytın müasir versiyasını yazdırır (Claude/Gemini)."""
     return _tehvil(await asyncio.to_thread(builder.muasir.qur, analiz_id))
@@ -219,19 +261,19 @@ def muasir_onizleme(analiz_id: int) -> FileResponse:
     return FileResponse(tapinti[0], media_type="text/html")
 
 
-@app.post("/api/analyze/{analiz_id}/klon")
+@app.post("/api/analyze/{analiz_id}/klon", dependencies=ACAR)
 async def klon_hazirla(analiz_id: int) -> dict:
     """🧬 `ai-website-cloner` üçün araşdırma sənədlərini yazır."""
     return _tehvil(await asyncio.to_thread(builder.klon.hazirla, analiz_id))
 
 
-@app.post("/api/analyze/{analiz_id}/arsiv")
+@app.post("/api/analyze/{analiz_id}/arsiv", dependencies=ACAR)
 async def arsiv_qur(analiz_id: int) -> dict:
     """📦 Ana səhifəni (HTML + CSS + şəkillər) lokal qovluğa yığır."""
     return _tehvil(await builder.arsiv.arsivle(analiz_id))
 
 
-@app.post("/api/analyze/{analiz_id}/pdf")
+@app.post("/api/analyze/{analiz_id}/pdf", dependencies=ACAR)
 async def pdf_qur(analiz_id: int) -> dict:
     """📄 Bütün analizi bir PDF faylına yazır."""
     return _tehvil(await asyncio.to_thread(builder.pdf.yarat, analiz_id))
@@ -276,7 +318,7 @@ def izleme_siyahisi(min_saat: int = 0) -> list[dict]:
     return izleme.siyahi(min_saat=min_saat)
 
 
-@app.post("/api/izleme")
+@app.post("/api/izleme", dependencies=ACAR)
 def izleme_elave(istek: IzlemeIstek) -> dict:
     """🔔 Saytı izləməyə qoyur."""
     netice = izleme.elave_et(istek.site_id, istek.cron, istek.telegram_chat_id)
@@ -285,14 +327,14 @@ def izleme_elave(istek: IzlemeIstek) -> dict:
     return netice
 
 
-@app.delete("/api/izleme/{site_id}")
+@app.delete("/api/izleme/{site_id}", dependencies=ACAR)
 def izleme_dayandir(site_id: int) -> dict:
     if not izleme.sil(site_id):
         raise HTTPException(404, "Bu sayt izlənmir")
     return {"site_id": site_id, "izlenir": False}
 
 
-@app.post("/api/izleme/{site_id}/yoxla")
+@app.post("/api/izleme/{site_id}/yoxla", dependencies=ACAR)
 async def izleme_yoxla(site_id: int, rag_yenile: bool = True) -> dict:
     """Saytı yenidən gəzir və əvvəlki nüsxə ilə fərqi qaytarır."""
     netice = await izleme.yoxla(site_id, rag_yenile=rag_yenile)
@@ -304,7 +346,7 @@ async def izleme_yoxla(site_id: int, rag_yenile: bool = True) -> dict:
 # ------------------------------------------------------------------ iş xətaları
 
 
-@app.post("/api/xetalar")
+@app.post("/api/xetalar", dependencies=ACAR)
 def xeta_qeyd_et(istek: XetaIstek) -> dict:
     """n8n Error Workflow buraya yazır."""
     return izleme.xeta_yaz(istek.menbe, istek.workflow, istek.xeta_metni)

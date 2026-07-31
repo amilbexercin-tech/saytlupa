@@ -58,19 +58,73 @@ temaDugme.addEventListener('click', () => {
 
 temaDugmeniYenile();
 
+/* ---------------- API açarı ---------------- */
+
+/* Serverdə `API_ACAR` qoyulubsa analiz, təhvil və izləmə düymələri açar tələb
+   edir — hamısı pullu model çağırışıdır. Açar yalnız bu brauzerdə saxlanılır,
+   heç yerə göndərilmir (öz serverimizdən başqa). Lokalda açar boşdur və düymə
+   ümumiyyətlə görünmür. */
+const ACAR_QUTUSU = 'api_acar';
+const acarDugme = el('d-acar');
+const acarOxu = () => localStorage.getItem(ACAR_QUTUSU) || '';
+
+/* Açar varsa sorğu başlığına qoyulur; yoxdursa başlıq göndərilmir. */
+function acarli(basliqlar = {}) {
+  const a = acarOxu();
+  return a ? { ...basliqlar, 'X-API-Acar': a } : basliqlar;
+}
+
+/* `fetch`-in açar əlavə edən variantı — yazan bütün sorğular bundan keçir. */
+function sorgu(unvan, secim = {}) {
+  return fetch(unvan, { ...secim, headers: acarli(secim.headers || {}) });
+}
+
+/* FastAPI xətanı iki formatda qaytarır: sxem doğrulaması **siyahı**
+   (`[{msg: …}]`), `HTTPException` isə **mətn** verir. Fərqi nəzərə almasaq
+   mətnin yalnız birinci hərfi göstərilir — 401 və 429 səbəbləri itir. */
+function xetaMetni(x, cavab) {
+  const d = x && x.detail;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d) && d[0]) return d[0].msg || JSON.stringify(d[0]);
+  return 'Xəta ' + cavab.status;
+}
+
+function acarDugmeniYenile() {
+  acarDugme.title = acarOxu()
+    ? 'API açarı qoyulub — dəyişmək üçün bas'
+    : 'API açarı yoxdur — analiz üçün lazımdır';
+  acarDugme.textContent = acarOxu() ? '🔑' : '🔓';
+}
+
+acarDugme.addEventListener('click', () => {
+  const yeni = prompt('API açarı (boş qoysan silinir):', acarOxu());
+  if (yeni === null) return;
+  if (yeni.trim()) localStorage.setItem(ACAR_QUTUSU, yeni.trim());
+  else localStorage.removeItem(ACAR_QUTUSU);
+  acarDugmeniYenile();
+});
+
 /* ---------------- sistem vəziyyəti ---------------- */
 
 const nisan = (ad, aktiv) =>
   `<span class="nisan"><span class="nöqtə ${aktiv ? 'var' : 'yox'}"></span>${ad}</span>`;
 
 fetch('/api/health').then((c) => c.json()).then((v) => {
-  el('veziyyet').innerHTML = [
+  const setirler = [
     nisan('Baza: ' + v.baza, true),
     nisan('Keş: ' + v.kes, true),
     nisan('Claude', v.claude),
     nisan('Gemini', v.gemini),
     nisan('Gemma', v.gemma),
-  ].join('');
+  ];
+  if (v.baza_xeberdarligi) setirler.push(nisan(v.baza_xeberdarligi, false));
+  el('veziyyet').innerHTML = setirler.join('');
+
+  // Açar düyməsi yalnız serverdə qoruma varsa mənalıdır
+  if (v.acar_teleb_olunur) {
+    gorset('d-acar');
+    acarDugmeniYenile();
+  }
 }).catch(() => {
   el('veziyyet').innerHTML = nisan('Server cavab vermir', false);
 });
@@ -91,7 +145,7 @@ dugme.addEventListener('click', async () => {
 
   let cavab;
   try {
-    cavab = await fetch('/api/analyze', {
+    cavab = await sorgu('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, max_sehife: 20 }),
@@ -102,8 +156,7 @@ dugme.addEventListener('click', async () => {
 
   if (!cavab.ok) {
     const x = await cavab.json().catch(() => ({}));
-    const mesaj = (x.detail && x.detail[0] && x.detail[0].msg) || cavab.status;
-    return bitir('Yanlış ünvan: ' + mesaj);
+    return bitir(xetaMetni(x, cavab));
   }
 
   const { analiz_id, site_id } = await cavab.json();
@@ -202,11 +255,18 @@ async function sualGonder() {
   const gozle = mesajElave('bot', '<span class="yuklenir">düşünürəm…</span>');
 
   try {
-    const c = await (await fetch(`/api/sites/${cariSayt}/chat`, {
+    const cavab = await sorgu(`/api/sites/${cariSayt}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sual, session_id: sohbetId }),
-    })).json();
+    });
+    const c = await cavab.json();
+
+    // 429 — gündəlik sual limiti; səbəb istifadəçiyə olduğu kimi göstərilir
+    if (!cavab.ok) {
+      gozle.innerHTML = `<span class="pis">${tehlukesiz(xetaMetni(c, cavab))}</span>`;
+      return;
+    }
 
     sohbetId = c.session_id;
     const o = c.olcme || {};
@@ -266,7 +326,7 @@ async function tehvil(nov, ad, dugme) {
   dugme.textContent = 'gedir…';
 
   try {
-    const cavab = await fetch(`/api/analyze/${cariAnaliz}/${nov}`, { method: 'POST' });
+    const cavab = await sorgu(`/api/analyze/${cariAnaliz}/${nov}`, { method: 'POST' });
     const c = await cavab.json();
 
     if (!cavab.ok) tehvilSetri(ad, `<p>${tehlukesiz(c.detail || cavab.status)}</p>`, true);
@@ -311,11 +371,11 @@ izleDugme.addEventListener('click', async () => {
 
   try {
     if (izlenir) {
-      await fetch(`/api/izleme/${cariSayt}`, { method: 'DELETE' });
+      await sorgu(`/api/izleme/${cariSayt}`, { method: 'DELETE' });
       izlenir = false;
       tehvilSetri('İzləmə', '<p>İzləmə dayandırıldı — bu sayt artıq yoxlanmayacaq.</p>');
     } else {
-      const cavab = await fetch('/api/izleme', {
+      const cavab = await sorgu('/api/izleme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ site_id: cariSayt }),
@@ -376,15 +436,14 @@ const muqayiseQeyd = (metn) => {
    qısa sətir kimi görünür. */
 function ikinciSaytiAnaliz(unvan) {
   return new Promise((hell, red) => {
-    fetch('/api/analyze', {
+    sorgu('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: unvan, max_sehife: 20 }),
     }).then(async (cavab) => {
       if (!cavab.ok) {
         const x = await cavab.json().catch(() => ({}));
-        const m = (x.detail && x.detail[0] && x.detail[0].msg) || cavab.status;
-        return red(new Error('Yanlış ünvan: ' + m));
+        return red(new Error(xetaMetni(x, cavab)));
       }
       const { analiz_id, site_id } = await cavab.json();
       efektMatrix(true);

@@ -1,0 +1,51 @@
+# Caddy — HTTPS və iki ünvanın ayrılması.
+#
+# Caddy Let's Encrypt sertifikatını özü alır və avtomatik yeniləyir. Şərt:
+# ünvan həqiqətən bu serverin IP-sinə baxmalıdır (DNS A qeydi və ya sslip.io).
+#
+# Ünvanlar `.env`-dən gəlir:
+#   SAYT_HOST=lupa.numune.az        (və ya 203.0.113.10.sslip.io)
+#   N8N_HOST=n8n.numune.az          (və ya n8n.203.0.113.10.sslip.io)
+
+{$SAYT_HOST} {
+	encode gzip
+
+	# SSE (canlı gedişat) buferlənməməlidir — yoxsa gedişat sətirləri
+	# analiz bitənə qədər gözləyib birdən görünür.
+	reverse_proxy api:8000 {
+		flush_interval -1
+	}
+
+	# CSP `sandbox`, `nosniff`, `X-Frame-Options` və `Referrer-Policy` artıq
+	# **tətbiqin özündədir** (`backend/main.py`-dəki middleware). Səbəb: Railway
+	# kimi hostinqlərdə tərs proxy bizim deyil və onun konfiqurasiyasına
+	# çatmırıq — qoruma hostinqdən asılı qalmamalıdır.
+	#
+	# Burada yalnız HSTS qalır: onu TLS-i bitirən tərəf verməlidir, tətbiq yox.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	log {
+		output file /data/saytlupa.log {
+			roll_size 10mb
+			roll_keep 3
+		}
+	}
+}
+
+{$N8N_HOST} {
+	encode gzip
+
+	# n8n-in redaktoru WebSocket işlədir — Caddy onu avtomatik ötürür.
+	reverse_proxy n8n:5678 {
+		flush_interval -1
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+}

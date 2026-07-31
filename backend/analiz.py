@@ -101,6 +101,28 @@ def sehifeleri_yaz(site_id: int, sehifeler: list[dict]) -> int:
         return s.query(db.Sehife).filter(db.Sehife.site_id == site_id).count()
 
 
+def sehifeleri_sil(site_id: int, unvanlar: list[str]) -> int:
+    """Verilən ünvanları bazadan silir və neçəsinin silindiyini qaytarır.
+
+    `izleme` modulu saytdan yoxa çıxan səhifələr üçün çağırır. Silinməsə, həmin
+    səhifə hər yoxlamada yenidən "yoxa çıxıb" kimi hesablanır və Telegram-a eyni
+    xəbər əbədi gedir. Səhifə silinəndə onun chunk-ları da gedir (ORM kaskadı) —
+    bu, düzgündür: saytda olmayan mətnlə söhbət etmək istifadəçini yanıldır.
+    """
+    if not unvanlar:
+        return 0
+    with db.sessiya() as s:
+        qeydler = (
+            s.query(db.Sehife)
+            .filter(db.Sehife.site_id == site_id, db.Sehife.url.in_(unvanlar))
+            .all()
+        )
+        for qeyd in qeydler:
+            s.delete(qeyd)
+        s.commit()
+        return len(qeydler)
+
+
 def elaqe_birlesdir(xam: dict, sehifeler: list[dict]) -> dict:
     """Gəzilən səhifələrdən toplanan əlaqə məlumatını analizə əlavə edir.
 

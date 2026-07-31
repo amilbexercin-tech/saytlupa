@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-880, 300],
+      "position": [
+        -880,
+        300
+      ],
       "webhookId": "8f2c1a10-3333-4a10-9a01-saytlupa0004"
     },
     {
@@ -31,18 +34,26 @@
       "name": "Gemma — təsnifat",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.5,
-      "position": [-640, 300]
+      "position": [
+        -640,
+        300
+      ]
     },
     {
       "parameters": {
         "model": "gemma3:4b",
-        "options": { "temperature": 0 }
+        "options": {
+          "temperature": 0
+        }
       },
       "id": "wf4-ollama",
       "name": "Ollama — Gemma 3",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
-      "position": [-600, 500]
+      "position": [
+        -600,
+        500
+      ]
     },
     {
       "parameters": {
@@ -52,7 +63,10 @@
       "name": "Cavabı oxu",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-400, 300]
+      "position": [
+        -400,
+        300
+      ]
     },
     {
       "parameters": {
@@ -71,7 +85,10 @@
                     "id": "wf4-r1",
                     "leftValue": "={{ $json.niyyet }}",
                     "rightValue": "analiz",
-                    "operator": { "type": "string", "operation": "equals" }
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
                 ],
                 "combinator": "and"
@@ -92,7 +109,10 @@
                     "id": "wf4-r2",
                     "leftValue": "={{ $json.niyyet }}",
                     "rightValue": "sohbet",
-                    "operator": { "type": "string", "operation": "equals" }
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
                 ],
                 "combinator": "and"
@@ -113,7 +133,10 @@
                     "id": "wf4-r3",
                     "leftValue": "={{ $json.niyyet }}",
                     "rightValue": "siyahi",
-                    "operator": { "type": "string", "operation": "equals" }
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
                 ],
                 "combinator": "and"
@@ -133,50 +156,95 @@
       "name": "Yönləndir",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [-180, 300]
+      "position": [
+        -180,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8000/api/analyze",
+        "url": "={{ $env.SAYTLUPA_API }}/api/analyze",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ url: $json.sayt_url, max_sehife: 10 }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Acar",
+              "value": "={{ $env.API_ACAR }}"
+            }
+          ]
+        }
       },
       "id": "wf4-analiz",
       "name": "Yeni sayt analiz et",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [80, 120],
+      "position": [
+        80,
+        120
+      ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=http://host.docker.internal:8000/api/sites/{{ $json.site_id }}/chat",
+        "url": "={{ $env.SAYTLUPA_API }}/api/sites/{{ $json.site_id }}/chat",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ sual: $json.sual }) }}",
-        "options": { "timeout": 180000 }
+        "options": {
+          "timeout": 180000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Acar",
+              "value": "={{ $env.API_ACAR }}"
+            }
+          ]
+        }
       },
       "id": "wf4-chat",
       "name": "Saytla danış",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [80, 300],
+      "position": [
+        80,
+        300
+      ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:8000/api/sites",
-        "options": { "timeout": 20000 }
+        "url": "={{ $env.SAYTLUPA_API }}/api/sites",
+        "options": {
+          "timeout": 20000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Acar",
+              "value": "={{ $env.API_ACAR }}"
+            }
+          ]
+        }
       },
       "id": "wf4-siyahi",
       "name": "Saytları göstər",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [80, 480],
+      "position": [
+        80,
+        480
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -187,7 +255,10 @@
       "name": "Cavabı yığ",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [320, 300]
+      "position": [
+        320,
+        300
+      ]
     },
     {
       "parameters": {
@@ -199,31 +270,136 @@
       "name": "Cavab qaytar",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [540, 300]
+      "position": [
+        540,
+        300
+      ]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "Gemma — təsnifat", "type": "main", "index": 0 }]] },
-    "Gemma — təsnifat": { "main": [[{ "node": "Cavabı oxu", "type": "main", "index": 0 }]] },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Gemma — təsnifat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemma — təsnifat": {
+      "main": [
+        [
+          {
+            "node": "Cavabı oxu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Ollama — Gemma 3": {
       "ai_languageModel": [
-        [{ "node": "Gemma — təsnifat", "type": "ai_languageModel", "index": 0 }]
+        [
+          {
+            "node": "Gemma — təsnifat",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Cavabı oxu": { "main": [[{ "node": "Yönləndir", "type": "main", "index": 0 }]] },
+    "Cavabı oxu": {
+      "main": [
+        [
+          {
+            "node": "Yönləndir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Yönləndir": {
       "main": [
-        [{ "node": "Yeni sayt analiz et", "type": "main", "index": 0 }],
-        [{ "node": "Saytla danış", "type": "main", "index": 0 }],
-        [{ "node": "Saytları göstər", "type": "main", "index": 0 }],
-        [{ "node": "Cavabı yığ", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Yeni sayt analiz et",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Saytla danış",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Saytları göstər",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cavabı yığ",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Yeni sayt analiz et": { "main": [[{ "node": "Cavabı yığ", "type": "main", "index": 0 }]] },
-    "Saytla danış": { "main": [[{ "node": "Cavabı yığ", "type": "main", "index": 0 }]] },
-    "Saytları göstər": { "main": [[{ "node": "Cavabı yığ", "type": "main", "index": 0 }]] },
-    "Cavabı yığ": { "main": [[{ "node": "Cavab qaytar", "type": "main", "index": 0 }]] }
+    "Yeni sayt analiz et": {
+      "main": [
+        [
+          {
+            "node": "Cavabı yığ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Saytla danış": {
+      "main": [
+        [
+          {
+            "node": "Cavabı yığ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Saytları göstər": {
+      "main": [
+        [
+          {
+            "node": "Cavabı yığ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cavabı yığ": {
+      "main": [
+        [
+          {
+            "node": "Cavab qaytar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {}
 }
