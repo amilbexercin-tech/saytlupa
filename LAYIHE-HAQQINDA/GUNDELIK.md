@@ -744,18 +744,20 @@ Testlər: 192 → **195**.
 
 ---
 
-## 📋 PLAN — Onlayn yerləşdirmə (2026-07-31-də ediləcək)
+## 📋 PLAN — Onlayn yerləşdirmə (30 iyulda yazıldı, 31 iyulda icra olundu)
 
-> Bu bölmə **hələ edilməyib**. Məqsəd: layihəni hər kəsin görə biləcəyi
-> ünvana çıxarmaq — indi yalnız `localhost`-da görünür.
+> ✅ **İCRA OLUNDU** — nəticəsi aşağıdakı «Gün 16» bölməsindədir.
+> Plandan iki sapma oldu, hər ikisi orada izah edilib: platforma
+> **DigitalOcean əvəzinə Railway** seçildi, n8n isə **lokalda qaldı**.
+> Bölmə tarixçə üçün olduğu kimi saxlanılır.
 
 ### Verilmiş qərarlar
 
-| Sual | Qərar |
-|---|---|
-| Platforma | **DigitalOcean Droplet** (Docker + compose) |
-| Yeni analiz kim işlədə bilər | **Yalnız açarla** — ziyarətçi hazır analizləri görür |
-| n8n serverə çıxsınmı | **Xeyr** — avtomatlaşdırma qatıdır, ziyarətçi onu görmür; nümayişdə lokal maşında göstərilir |
+| Sual | Qərar | Nəticə |
+|---|---|---|
+| Platforma | **DigitalOcean Droplet** (Docker + compose) | ⚠️ dəyişdi → **Railway** |
+| Yeni analiz kim işlədə bilər | **Yalnız açarla** — ziyarətçi hazır analizləri görür | ✅ belə edildi |
+| n8n serverə çıxsınmı | **Xeyr** — avtomatlaşdırma qatıdır, ziyarətçi onu görmür; nümayişdə lokal maşında göstərilir | ✅ lokalda qaldı |
 
 ### Araşdırma nəticəsi: böyük server lazım deyil
 
@@ -817,6 +819,155 @@ pulsuz açar. Hazırda açarsız kvota bitir və 429 mesajı çıxır (bu, xəta
 
 ---
 
+## 2026-07-31 — Gün 16: layihə onlayn çıxdı
+
+Günün nəticəsi: **https://saytlupa-production.up.railway.app** işləyir, hər
+`git push` avtomatik yerləşdirilir, n8n-in dörd workflow-u lokalda buludakı
+API ilə danışır. Testlər **195 → 272**.
+
+### Əvvəlcə kod oxundu — 16 problem tapıldı
+
+Yerləşdirməyə başlamazdan əvvəl bütün kod (~11 min sətir) oxundu. Tapılanların
+beşi düzəldildi, hər düzəliş üçün test yazıldı, sonra **hər test qəsdən
+sındırılıb yoxlandı** ki, həqiqətən tutur.
+
+**1. SSRF — ən ciddisi.** `POST /api/analyze` istənilən ünvanı qəbul edirdi,
+IP süzgəci yox idi. Buludda `http://169.254.169.254/metadata/v1/` metadata
+xidmətidir və orada SSH açarları olur; crawler onu gəzib mətni bazaya yazar,
+RAG-a indeksləyər, **söhbətdən oxunar** idi. Yeni `backend/sebeke.py` ünvanı
+sorğudan əvvəl yoxlayır; yönləndirmənin hər addımı da httpx hook-u ilə
+süzülür. Ölçü kimi `is_global` seçildi, `is_private` yox — Python-da
+`100.64.0.0/10` (operator NAT-ı) `is_private` üçün False qaytarır, halbuki
+internetdən marşrutlanmır.
+
+**2. Postgres səssiz enməsi.** `DATABASE_URL` yazılıb, amma baza cavab
+verməsə layihə **səssizcə** SQLite-a keçirdi və heç kim bilmirdi. İndi
+xəbərdarlıq yazılır və `/api/health` göstərir. Bu düzəliş elə həmin gün öz
+faydasını verdi (aşağıda).
+
+**3. Versiyalar kilidlənmədi.** 34 paketin heç birində versiya yox idi —
+serverdə `pip install` başqa versiyalar çəkib testlərin keçdiyi mühiti pozardı.
+
+**4. Hadisə növbələri sızırdı.** Brauzersiz başlayan analizlər (MCP, n8n)
+növbə qoyub gedirdi, `temizle()` isə yalnız SSE bağlananda çağırılırdı.
+
+**5. İzləmə eyni xəbəri əbədi təkrarlayırdı.** `sehifeleri_yaz` silmirdi, ona
+görə yoxa çıxan səhifə hər yoxlamada yenidən «silinib» sayılırdı.
+
+Toxunulmayanlar (bilinir, sənədləşdirilib): `tehlukesiz()` dırnaq qaçırmır,
+SQLite axtarışı bütün chunk-ları Python-a yükləyir, `create_task` istinadı
+saxlanmır.
+
+### Sonra qapı, Docker, Railway
+
+**Giriş qapısı** (`backend/qapi.py`): pul xərcləyən 10 endpoint açar tələb
+edir, söhbət IP başına gündəlik limitə düşür, oxuyanlar açıq qalır.
+`API_ACAR` boş olanda **heç nə dəyişmir** — lokal inkişaf pozulmur.
+
+**Lokal Docker sınağı iki səhv tutdu:**
+
+- İki compose faylı eyni qovluqda olduğu üçün Docker onlara eyni layihə adı
+  verirdi və `pgdata` volume-unu paylaşırdılar. Volume köhnə parolla
+  yaradılmışdı, Postgres isə parolu yalnız ilk qalxışda qoyur — nə API, nə
+  n8n bazaya girə bildi. Həlli: `name: saytlupa-prod`.
+- Qalxış zamanı jurnal **tamamilə boş** idi: `db.py` Postgres yoxlamasını
+  import anında edir, `basicConfig` isə importlardan sonra işləyirdi. 60
+  saniyəlik gözləmə donma kimi görünürdü. Jurnalın qurulması
+  `backend/__init__.py`-yə köçürüldü.
+
+**Railway seçimi** DigitalOcean-ı əvəz etdi. Səbəb: hər xidmətə avtomatik
+HTTPS və domen verir, yəni Caddy, Let's Encrypt, sslip.io və domen alışı
+lazımsız olur. Amma Caddy çıxdığı üçün orada saxladığım təhlükəsizlik
+başlıqları (`CSP: sandbox` daxil) tətbiqin öz middleware-inə köçürüldü —
+indi qoruma hostinqdən asılı deyil.
+
+Xidmətlər: `db` (pgvector, volume) · `Redis` (volume) · `saytlupa`
+(Dockerfile, volume `/data`, GitHub-a bağlı). Hamısı CLI ilə quruldu.
+
+### Avtomatik yerləşdirmə əvvəlcə işləmirdi
+
+Push edildi — Railway heç nə etmədi. Səbəb: repo **açıqdır**, ona görə
+Railway onu ilk dəfə anonim klonlaya bildi, amma GitHub App icazələndirilmədiyi
+üçün push siqnalını (webhook) almırdı. İcazə veriləndən sonra sınandı:
+
+```
+push  : 21:44:26
+deploy: 21:44:26  → SUCCESS
+```
+
+### n8n: itən workflow-lar
+
+n8n konteyneri 23 dəfə yenidən başlayır, jurnal boş, çıxış kodu 0 idi.
+Səbəb: `./n8n/entrypoint.sh` **fayl deyil, boş qovluq** idi — bind mount
+edilən mənbə host-da yoxdursa Docker onun yerinə qovluq yaradır, `/bin/sh`
+isə qovluğu icra edə bilmir. Düzəliş üç addım tələb etdi: konteyneri
+dayandırmaq (işlədikcə qovluğu təkrar yaradırdı), faylı yazmaq, konteyneri
+**silib yenidən yaratmaq** (köhnə nüsxədə `/entrypoint.sh` hələ qovluq idi).
+
+Qalxandan sonra bazada 6 workflow-un heç biri yox idi. Araşdırma:
+
+- `workflow.deleted` hadisəsi **heç bir jurnalda yoxdur**
+- adların izi nə `database.sqlite`-də, nə 4 MB-lıq WAL-da var — yəni
+  sətirlər silinməyib, **baza sıfırdan yaradılıb**
+- volume-un qalanı sağdır (`config` 1 iyun, jurnallar 29-31 iyul)
+- `n8n-import` 18:30:41-də «Workflows exist, skipping import» yazıb, yəni
+  həmin an workflow-lar hələ yerində idi; baza 18:31-də yenidən yazılıb
+
+Səbəb dəqiq müəyyən edilə bilmədi. Konteynerin silinib yenidən yaradılması
+18:28-də olub, yəni vaxt baxımından yaxındır və istisna edilmir.
+
+**SaytLupa-nın dördü bərpa olundu** — çünki `n8n/*.json` git-dədir. Digər
+ikisi (`Gemma4 ilə Şəkil Təsvir Botu`, `lahiyə 2→ Telegram`) heç yerdə
+saxlanmırdı və itdi; birincisinin node quruluşu hadisə jurnalından çıxarıldı.
+
+> **Dərs:** n8n-in öz volume-u ehtiyat nüsxə deyil. Workflow-lar git-də
+> saxlanmalıdır — bu gün fərqi məhz o yaratdı.
+
+### «Dünən olurdu, bu gün yox» — Cloudflare
+
+turbo.az analizi dünən işləyirdi, bu gün «yoxlama səhifəsi» qaytardı. Kod
+dəyişməyib: **dünən analiz ev IP-sindən gedirdi, bu gün Railway-in datacenter
+IP-sindən**. Ölçüldü — eyni User-Agent ilə: ev maşınından 311 KB real HTML,
+Railway-dən HTTP 403.
+
+Bunu bu planın öz «risklər» bölməsi əvvəlcədən yazmışdı. Cloudflare-i keçmək
+üçün kod yazılmadı: o, sayt sahibinin qəsdən qoyduğu giriş nəzarətidir.
+Nümayiş üçün təmiz saytlar yoxlanıldı — `asan.gov.az` (nginx), `e-gov.az`,
+`azercell.com` işləyir; `azal.az`, `kapitalbank.az`, `bakcell.com` Cloudflare
+arxasındadır.
+
+### Gemma harada işləyir
+
+Buludda Ollama yoxdur, tətbiqə isə Gemma lazım deyil: re-ranking Gemini-dədir
+və model zəncirində Claude/Gemini var. Amma nişanın «yoxdur» yazması sınmış
+kimi görünürdü. İndi `GEMMA_QEYDI` mühit dəyişəni ilə açıq modelin **yeri**
+bəyan edilir və nişan yaşıl olur: `Gemma: n8n agentində`.
+
+Agent uçdan-uca sınandı — iki niyyət də düzgün işlədi:
+
+```
+"hansi saytlar analiz olunub?"      → siyahi  → 3 sayt        (69 san)
+"railway.app sayti ne teklif edir?" → sohbet  → tam cavab     (58 san)
+```
+
+### Günün sonunda vəziyyət
+
+| Nə | Harada |
+|---|---|
+| Sayt | Railway · avtomatik deploy · Postgres+Redis+volume |
+| n8n (4 workflow) | lokal · hamısı aktiv · buludakı API ilə danışır |
+| Gemma agenti | lokal Ollama · `gemma3:4b` |
+| İnterfeys | yeni SVG loqo, brauzer nişanı, açar düyməsinə kilid |
+
+### Açıq qalanlar
+
+- **Error Workflow** yalnız 4-cü workflow-a qoşulub; 1 və 2-də yoxdur
+- **Workflow-ların ehtiyat nüsxəsi** hələ avtomatlaşdırılmayıb
+- **İzləmə hər gün 09:00-da turbo.az-ı yoxlayır** — pullu təkrar
+- Açar düyməsindəki parol JS faylındadır, təhlükəsizlik deyil (kodda yazılıb)
+
+---
+
 ## Arxiv — əvvəlki planlar
 
 ### Gün 12 — Sənədləşdirmə və cilalama
@@ -837,6 +988,18 @@ pulsuz açar. Hazırda açarsız kvota bitir və 429 mesajı çıxır (bu, xəta
 
 ## Növbəti dəfə ilk addım
 
+### Canlı sayt
+
+**https://saytlupa-production.up.railway.app** — heç nə işə salmaq lazım deyil.
+
+Kodu dəyişdinsə:
+```bash
+git push origin master        # Railway 1-2 dəqiqəyə özü yerləşdirir
+```
+Vəziyyəti `/api/health` göstərir: `baza: postgresql`, `kes: redis`.
+
+### Lokal inkişaf
+
 ```bash
 cd /d D:\SaytLupa
 docker compose --profile core up -d          # Postgres + Redis (istəyə bağlı)
@@ -846,4 +1009,19 @@ uvicorn backend.main:app --reload
 Brauzer: <http://localhost:8000>
 
 > Açarlar artıq `.env`-dədir (`ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`) — heç nə
-> əlavə etmək lazım deyil. `/api/health` hər üç modeli `true` göstərməlidir.
+> əlavə etmək lazım deyil.
+>
+> **Qeyd:** `.env`-də `API_ACAR` da var, ona görə lokal sayt da açar istəyir —
+> brauzerdə 🔑 düyməsindən yapışdır. İnkişaf zamanı mane olsa `API_ACAR=` boş
+> qoy, onda bütün məhdudiyyətlər söndürülür.
+
+### n8n
+
+Lokalda işləyir (`http://localhost:5678`, `self-hosted-ai-starter-kit3`).
+Buludakı API-yə `SAYTLUPA_API` və `API_ACAR` mühit dəyişənləri ilə bağlanır.
+
+Workflow-ları **dəyişdinsə git-ə sal** — 31 iyulda iki workflow məhz git-də
+olmadığı üçün itdi:
+```bash
+docker exec n8n n8n export:workflow --all --output=/tmp/wf.json
+```

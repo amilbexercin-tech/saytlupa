@@ -255,3 +255,56 @@ yükləyəcəkdi — bu, sayta **4 eyni sorğu** deməkdir. İndi `surat.olc_ve_
 bir dəfə gətirir, yüklənmə vaxtını ölçür və HTML-i bütün toplayıcılar arasında paylaşır.
 
 Nəticə: sayta 4 dəfə az yük, analiz isə 4-6 saniyədən **1.2 saniyəyə** düşdü.
+
+## 15. Niyə DigitalOcean əvəzinə Railway?
+
+Plan DigitalOcean Droplet idi (30 iyul). 31 iyulda Railway seçildi, çünki
+Droplet yolu **yerləşdirməyə aid olmayan çoxlu iş** tələb edirdi: Caddy
+konfiqurasiyası, Let's Encrypt, domen (və ya sslip.io), SSH, swap faylı,
+Docker qurulumu. Railway bunların hamısını əvəz edir — hər xidmətə avtomatik
+HTTPS və ünvan verir.
+
+Ödənən qiymət: `docker-compose.prod.yml` yerləşdirmə vasitəsi olmaqdan çıxdı
+(Railway compose işlətmir, hər xidmət ayrıca qurulur). Fayl silinmədi —
+lokalda tam dəsti sınamaq üçün dəyərlidir və məhz o sınaq iki səhv tutdu.
+
+**Vacib nəticə:** Caddy çıxanda orada saxlanan təhlükəsizlik başlıqları da
+gedirdi — `/muasir/onizleme` üçün `Content-Security-Policy: sandbox` daxil.
+Onlar tətbiqin öz middleware-inə köçürüldü (`backend/main.py`). İndi qoruma
+hostinqdən asılı deyil: lokalda, Docker-də və Railway-də eynidir. Bu, əslində
+əvvəlkindən yaxşıdır — proxy dəyişəndə qoruma səssizcə itmir.
+
+## 16. Niyə n8n serverə çıxarılmadı?
+
+Müəllim n8n-in də onlayn olmasını istəmişdi, amma iki maneə vardı.
+
+**Gemma agenti.** 4-cü workflow `lmChatOllama` node-u ilə `gemma3:4b`-yə
+müraciət edir. Model işləmək üçün ~5 GB RAM istəyir; Railway RAM-ı $10/GB/ay
+hesablayır, yəni tək bu model ayda ~$50 deməkdir. Üstəlik bulud maşınında GPU
+yoxdur — cavab prosessorda gələcək, yəni yavaş.
+
+**Volume icazəsi.** Railway volume-ları root sahibliyi ilə bağlayır, n8n isə
+`node` istifadəçisi kimi işləyir: `EACCES: permission denied, open
+'/home/node/.n8n/config'`. Konteyner qalxmadı.
+
+Seçim: n8n lokalda qalır və buludakı API ilə HTTPS üzərindən danışır
+(`SAYTLUPA_API` + `API_ACAR` mühit dəyişənləri). Gemma agenti lokal Ollama ilə
+tam sürətində işləyir, xərc sıfırdır. Şərt odur ki, nümayiş zamanı həmin
+kompüter açıq olsun.
+
+## 17. Niyə Gemma nişanı «yoxdur» yazmır?
+
+Buludda Ollama yoxdur, ona görə `/api/health` əvvəl `gemma: false` qaytarırdı.
+Bu, doğru idi, amma **yanıldıcı**: baxan adam nəyinsə sındığını düşünürdü.
+Halbuki Gemma bu tətbiqdə onsuz da çağırılmır — re-ranking Gemini-dədir və
+model zəncirində Claude/Gemini var; Gemma yalnız n8n agentində işlədilir.
+
+İki dəyişiklik edildi. Birincisi: vəziyyət indi üç haldan biridir — `hazir`,
+`elcatmaz`, `islenmir`. Sonuncu halda Ollama-ya sorğu ümumiyyətlə atılmır
+(hər sağlamlıq yoxlamasında 2 saniyəlik gözləmə aradan qalxdı). İkincisi:
+`GEMMA_QEYDI` dəyişəni ilə açıq modelin **yeri** bəyan edilir və nişan yaşıl
+olur — `Gemma: n8n agentində`.
+
+Niyə sadəcə yaşıl «Gemma» yazılmadı: tətbiqin özündə model yoxdur, bunu
+gizlətsək `/api/health` ilə interfeys bir-birinə zidd olardı. İndiki variant
+həm doğrudur, həm də sınmış görünmür.
