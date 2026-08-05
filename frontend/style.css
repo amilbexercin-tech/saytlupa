@@ -433,3 +433,11 @@ select:focus { outline: 2px solid var(--vurgu); outline-offset: -1px; }
 .tehl-risk, .tehl-hell { font-size: 13px; line-height: 1.5; margin-top: 3px; }
 .tehl-risk b { color: var(--qirmizi); }
 .tehl-hell b { color: var(--yasil); }
+.tehl-hell a { color: var(--vurgu); text-decoration: none; }
+.tehl-hell code { font-size: 12px; word-break: break-all; }
+
+/* aktiv skan razılıq qutusu */
+.aktiv-razi { display: flex; align-items: center; gap: 8px; font-size: 13.5px;
+  margin-top: 12px; cursor: pointer; }
+.aktiv-razi input { width: 16px; height: 16px; }
+#aktiv-telimat code { word-break: break-all; }

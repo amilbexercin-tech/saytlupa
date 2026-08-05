@@ -242,6 +242,45 @@ class N8nQeyd(Baza):
     tarix = Column(DateTime(timezone=True), default=indi)
 
 
+class TesdiqDomen(Baza):
+    """Aktiv skan üçün sahibliyi təsdiqlənmiş domenlər.
+
+    Aktiv skan real payload göndərir — yalnız sahibi olduğun saytda qanunidir.
+    Sahiblik DNS TXT (`saytlupa-verify=<token>`) və ya kök fayl-token ilə sübut
+    olunur. `.env`-dəki `OWNED_DOMAINS` allowlist-i buradan asılı deyil.
+    """
+
+    __tablename__ = "verified_domains"
+
+    id = Column(Integer, primary_key=True)
+    domain = Column(String(255), index=True, nullable=False)
+    token = Column(String(64), nullable=False)
+    usul = Column(String(10), default="dns")            # dns / fayl
+    status = Column(String(20), default="gozleyir")     # gozleyir / tesdiqli
+    yaradilma = Column(DateTime(timezone=True), default=indi)
+    tesdiq_tarixi = Column(DateTime(timezone=True))
+
+
+class AktivSkan(Baza):
+    """Aktiv skan işi (job). Worker növbədən götürür, nuclei işlədir, nəticə yazır."""
+
+    __tablename__ = "active_scans"
+
+    id = Column(Integer, primary_key=True)
+    domain = Column(String(255), index=True, nullable=False)
+    target_url = Column(String(500), nullable=False)
+    # gozleyir / isleyir / bitdi / xeta / dayandirildi
+    status = Column(String(20), default="gozleyir", index=True)
+    tapintilar = Column(JSON, default=list)             # finding sxemi (aktiv)
+    bal = Column(Integer)
+    herf = Column(String(1), default="")
+    gedisat = Column(Text, default="")                  # son gedişat mesajı
+    xeta = Column(Text, default="")
+    yaradilma = Column(DateTime(timezone=True), default=indi)
+    baslama = Column(DateTime(timezone=True))
+    bitme = Column(DateTime(timezone=True))
+
+
 def _sutun_elave_et(cedvel: str, sutun: str, tip: str) -> None:
     """Kiçik miqrasiya: sütun yoxdursa əlavə edir.
 

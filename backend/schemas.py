@@ -41,6 +41,44 @@ class TehlukesizlikIstek(BaseModel):
         return v
 
 
+# ---------- Aktiv (dərin) skan ----------
+
+
+class SahiblikIstek(BaseModel):
+    domain: str = Field(min_length=3, max_length=255)
+
+
+class AktivSkanIstek(BaseModel):
+    """Aktiv skan başlatma. `razilioq` = «bu sayt mənimdir, icazə verirəm»."""
+
+    url: HttpUrl
+    razilioq: bool = False
+
+    @field_validator("url")
+    @classmethod
+    def yalniz_http(cls, v: HttpUrl) -> HttpUrl:
+        if v.scheme not in ("http", "https"):
+            raise ValueError("Yalnız http/https ünvanları qəbul edilir")
+        return v
+
+
+class GedisatIstek(BaseModel):
+    """Worker → API gedişat yeniləməsi."""
+
+    mesaj: str = Field(max_length=500)
+    faiz: int | None = None
+
+
+class NeticeIstek(BaseModel):
+    """Worker → API yekun tapıntılar."""
+
+    tapintilar: list[dict] = []
+
+
+class XetaAktivIstek(BaseModel):
+    mesaj: str = Field(max_length=2000)
+
+
 class IzlemeIstek(BaseModel):
     site_id: int
     cron: str = "0 9 * * *"

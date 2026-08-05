@@ -25,9 +25,9 @@ function gedisatSetri(ad, metn, sinif = '') {
 }
 
 function butunBolmeleriGizlet() {
-  ['k-umumi', 'k-hesabat', 'k-tehlukesizlik', 'k-tehvil', 'k-sohbet', 'k-texno',
-   'k-server', 'k-performans', 'k-dizayn', 'k-reklam', 'k-mezmun', 'k-muqayise',
-   'k-sehifeler'].forEach(gizlet);
+  ['k-umumi', 'k-hesabat', 'k-tehlukesizlik', 'k-aktiv', 'k-tehvil', 'k-sohbet',
+   'k-texno', 'k-server', 'k-performans', 'k-dizayn', 'k-reklam', 'k-mezmun',
+   'k-muqayise', 'k-sehifeler'].forEach(gizlet);
   el('xeberdarliq').innerHTML = '';
   el('sohbet').innerHTML = '';
   el('tehvil-netice').innerHTML = '';
@@ -246,6 +246,7 @@ async function neticeniGoster(analizId) {
   try {
     const n = await (await fetch(`/api/analyze/${analizId}`)).json();
     neticeniCiz(n);
+    if (window.aktivHazirla) aktivHazirla(n.domain, n.url);
     ragVeziyyeti(n.site_id);
     izlemeVeziyyeti(n.site_id);
     muqayiseHazirla(n.site_id, n.domain);
@@ -627,6 +628,7 @@ tehlDugme.addEventListener('click', async () => {
     gedisatSetri('HAZIR', `bal ${s.bal}/100 · ${s.herf}`, 'ok');
 
     tehlukesizlikCiz(s);
+    if (window.aktivHazirla) aktivHazirla(s.domain, s.url);
     el('k-tehlukesizlik').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (x) {
     gedisatSetri('xəta', 'Server cavab vermədi', 'pis');

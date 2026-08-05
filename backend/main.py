@@ -19,22 +19,28 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
+from . import aktiv as aktiv_skan
 from . import analiz as analiz_xidmeti
-from . import builder, cache, db, hadise, izleme, llm, muqayise, qapi, rag, sebeke
+from . import builder, cache, db, hadise, izleme, llm, muqayise, qapi, rag, sahiblik, sebeke
 from . import __version__
 from .collectors import sertifikat, surat, tehlukesizlik
 from .collectors.base import domen as base_domen
 from .config import ayarlar
 from .schemas import (
+    AktivSkanIstek,
     AnalizBasladi,
     AnalizIstek,
     AnalizTam,
+    GedisatIstek,
     IzlemeIstek,
+    NeticeIstek,
+    SahiblikIstek,
     SaytXulase,
     SualCavab,
     SualIstek,
     TehlukesizlikIstek,
     Veziyyet,
+    XetaAktivIstek,
     XetaIstek,
 )
 
@@ -188,6 +194,111 @@ async def tehlukesizlik_yoxla(istek: TehlukesizlikIstek) -> dict:
         "domain": base_domen(url),
         **(tehl.get("data") or {}),
     }
+
+
+# ---------------- Aktiv (dərin) skan — yalnız təsdiqli domen ----------------
+
+
+@app.get("/api/sahiblik")
+def sahiblik_siyahisi() -> list[dict]:
+    """Təsdiqlənmiş domenlər (interfeys düyməni açmaq üçün yoxlayır)."""
+    return sahiblik.siyahi()
+
+
+@app.post("/api/sahiblik/token", dependencies=ACAR)
+def sahiblik_token(istek: SahiblikIstek) -> dict:
+    """Domen üçün təsdiq token-i və təlimat qaytarır."""
+    try:
+        return sahiblik.token_yarat(istek.domain)
+    except ValueError as xeta:
+        raise HTTPException(400, str(xeta))
+
+
+@app.post("/api/sahiblik/yoxla", dependencies=ACAR)
+def sahiblik_yoxla(istek: SahiblikIstek) -> dict:
+    """Token-in DNS/faylda olub-olmadığını yoxlayır və domeni təsdiqləyir."""
+    return sahiblik.yoxla(istek.domain)
+
+
+@app.post("/api/aktiv-skan", dependencies=ACAR)
+async def aktiv_skan_basla(istek: AktivSkanIstek) -> dict:
+    """Aktiv skan işi yaradır (yalnız təsdiqli domen + açıq razılıq)."""
+    if not istek.razilioq:
+        raise HTTPException(400, "Aktiv skan üçün açıq razılıq lazımdır "
+                                 "(«bu sayt mənimdir»).")
+    url = str(istek.url)
+    sebeb = await asyncio.to_thread(sebeke.unvan_sebebi, url)
+    if sebeb:
+        raise HTTPException(400, sebeb)
+    try:
+        return aktiv_skan.yeni_skan(url)
+    except aktiv_skan.TesdiqYoxdur as xeta:
+        raise HTTPException(403, str(xeta))
+
+
+@app.get("/api/aktiv-skan/novbe", dependencies=ACAR)
+def aktiv_skan_novbe() -> dict:
+    """Worker növbədən iş götürür (yoxdursa boş)."""
+    return aktiv_skan.novbeden_goturt() or {}
+
+
+@app.post("/api/aktiv-skan/{job_id}/gedisat", dependencies=ACAR)
+def aktiv_skan_gedisat(job_id: int, istek: GedisatIstek) -> dict:
+    aktiv_skan.gedisat_yaz(job_id, istek.mesaj, istek.faiz)
+    return {"ok": True, "dayandirildi": aktiv_skan.dayandirilibmi(job_id)}
+
+
+@app.post("/api/aktiv-skan/{job_id}/netice", dependencies=ACAR)
+def aktiv_skan_netice(job_id: int, istek: NeticeIstek) -> dict:
+    return aktiv_skan.netice_yaz(job_id, istek.tapintilar)
+
+
+@app.post("/api/aktiv-skan/{job_id}/xeta", dependencies=ACAR)
+def aktiv_skan_xeta(job_id: int, istek: XetaAktivIstek) -> dict:
+    aktiv_skan.xeta_yaz(job_id, istek.mesaj)
+    return {"ok": True}
+
+
+@app.post("/api/aktiv-skan/{job_id}/dayandir", dependencies=ACAR)
+def aktiv_skan_dayandir(job_id: int) -> dict:
+    return {"dayandirildi": aktiv_skan.dayandir(job_id)}
+
+
+@app.get("/api/aktiv-skan/{job_id}", dependencies=ACAR)
+def aktiv_skan_oxu(job_id: int) -> dict:
+    netice = aktiv_skan.oxu(job_id)
+    if netice is None:
+        raise HTTPException(404, "Belə skan yoxdur")
+    return netice
+
+
+@app.get("/api/aktiv-skan/{job_id}/axin")
+async def aktiv_skan_axin(job_id: int):
+    """Aktiv skanın canlı gedişatı (SSE) — analizlə eyni nümunə."""
+    if aktiv_skan.oxu(job_id) is None:
+        raise HTTPException(404, "Belə skan yoxdur")
+
+    hid = aktiv_skan._hid(job_id)
+    novbe = hadise.novbe(hid)
+
+    async def axin():
+        try:
+            while True:
+                try:
+                    qeyd = await asyncio.wait_for(novbe.get(), timeout=SSE_GOZLEME)
+                except asyncio.TimeoutError:
+                    yield {"event": "nebz", "data": "{}"}
+                    continue
+                yield {
+                    "event": qeyd["nov"],
+                    "data": json.dumps(qeyd, ensure_ascii=False, default=str),
+                }
+                if qeyd["nov"] == "son":
+                    break
+        finally:
+            hadise.temizle(hid)
+
+    return EventSourceResponse(axin())
 
 
 @app.get("/api/analyze/{analiz_id}/axin")

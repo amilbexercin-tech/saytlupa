@@ -60,6 +60,11 @@ class Ayarlar(BaseSettings):
     api_acar: str = ""
     gunluk_sual_limiti: int = 5
 
+    # Aktiv (dərin) skan üçün öz domenlərin — vergüllə ayrılmış allowlist.
+    # Bunlar avtomatik "təsdiqli" sayılır (DNS/fayl tələb olunmur). Boş olsa
+    # yalnız DNS TXT / fayl-token ilə təsdiqlənən domenlərə icazə verilir.
+    owned_domains: str = ""
+
     # Crawler
     max_pages: int = 30
     request_timeout: int = 15

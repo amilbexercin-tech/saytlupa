@@ -1,0 +1,176 @@
+"""Aktiv skan işçisi (worker) — öz kompüterində işləyir.
+
+Nə edir: SaytLupa API-dən aktiv skan işi götürür, hədəf domenin təsdiqli
+olduğunu təkrar yoxlayır, **nuclei** ilə skan edir, gedişat və nəticəni API-yə
+göndərir. Brauzer nəticəni canlı görür.
+
+İşə salmaq (repo kökündən):
+
+    py scripts/aktiv_worker.py
+
+Tələblər:
+  * nuclei ikili faylı PATH-də olmalıdır  (https://github.com/projectdiscovery/nuclei)
+    şablonları yenilə:  nuclei -update-templates
+  * mühit dəyişənləri (ya .env-dən götürülür):
+      SAYTLUPA_API   — API ünvanı (default http://localhost:8000)
+      API_ACAR       — yazma açarı (əks halda backend .env-dən oxunur)
+
+Təhlükəsizlik: worker yalnız API-nin verdiyi işi götürür və domen təsdiqini
+`sahiblik` modulu ilə **yenidən** yoxlayır — təsdiqsiz domen skan olunmur.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import httpx
+
+# Repo kökünü yola əlavə et ki, `backend` paketini import edə bilək.
+KOK = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(KOK))
+
+from backend import nuclei_parse  # noqa: E402
+from backend import sahiblik  # noqa: E402
+from backend.config import ayarlar  # noqa: E402
+
+API = os.getenv("SAYTLUPA_API", "http://localhost:8000").rstrip("/")
+ACAR = os.getenv("API_ACAR") or ayarlar.api_acar
+BASLIQ = {"X-API-Acar": ACAR} if ACAR else {}
+
+BOŞ_GOZLEME = 5          # növbə boşdursa bu qədər saniyə gözlə
+MAX_MUDDET = 900         # bir skan ən çoxu bu qədər saniyə (15 dəq)
+
+
+def _log(*a):
+    print(f"[{time.strftime('%H:%M:%S')}]", *a, flush=True)
+
+
+def _post(yol: str, govde: dict) -> dict:
+    try:
+        c = httpx.post(f"{API}{yol}", json=govde, headers=BASLIQ, timeout=30)
+        return c.json() if c.headers.get("content-type", "").startswith("application/json") else {}
+    except Exception as x:
+        _log("API xətası:", yol, x)
+        return {}
+
+
+def _nuclei_var() -> bool:
+    return shutil.which("nuclei") is not None
+
+
+def skan_et(job_id: int, url: str) -> None:
+    """nuclei-ni işə salır, tapıntıları toplayır və API-yə göndərir."""
+    tapintilar: list[dict] = []
+    emr = [
+        "nuclei", "-u", url, "-jsonl", "-silent",
+        "-severity", "critical,high,medium,low,info",
+        "-rate-limit", "50", "-timeout", "10", "-retries", "1",
+        "-no-interactsh",
+    ]
+    _log("nuclei:", " ".join(emr))
+    _post(f"/api/aktiv-skan/{job_id}/gedisat", {"mesaj": "nuclei başladı", "faiz": 5})
+
+    basla = time.time()
+    proses = subprocess.Popen(emr, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              text=True, encoding="utf-8", errors="replace")
+    son_bildiris = 0.0
+    try:
+        for setir in proses.stdout:
+            setir = setir.strip()
+            if setir:
+                t = nuclei_parse.bir_tapinti(_yukle(setir))
+                if t:
+                    tapintilar.append(t)
+
+            indi = time.time()
+            # Hər ~2 saniyədən bir gedişat + dayandırma yoxlaması
+            if indi - son_bildiris > 2:
+                son_bildiris = indi
+                cavab = _post(f"/api/aktiv-skan/{job_id}/gedisat", {
+                    "mesaj": f"skan gedir — {len(tapintilar)} tapıntı",
+                    "faiz": None,
+                })
+                if cavab.get("dayandirildi"):
+                    _log("dayandırıldı — nuclei kəsilir")
+                    proses.kill()
+                    return
+            if indi - basla > MAX_MUDDET:
+                _log("vaxt limiti — nuclei kəsilir")
+                proses.kill()
+                break
+        proses.wait(timeout=10)
+    finally:
+        if proses.poll() is None:
+            proses.kill()
+
+    _log(f"bitdi — {len(tapintilar)} tapıntı")
+    _post(f"/api/aktiv-skan/{job_id}/netice", {"tapintilar": tapintilar})
+
+
+def _yukle(setir: str) -> dict:
+    try:
+        return json.loads(setir)
+    except json.JSONDecodeError:
+        return {}
+
+
+def bir_dovre() -> bool:
+    """Bir iş götürüb işlədir. İş yoxdursa False qaytarır."""
+    try:
+        c = httpx.get(f"{API}/api/aktiv-skan/novbe", headers=BASLIQ, timeout=20)
+        is_ = c.json() if c.status_code == 200 else {}
+    except Exception as x:
+        _log("növbə oxunmadı:", x)
+        return False
+
+    if not is_ or "job_id" not in is_:
+        return False
+
+    job_id, url, domain = is_["job_id"], is_["target_url"], is_["domain"]
+    _log(f"iş #{job_id}: {url}")
+
+    # Müdafiə dərinliyi: domen təsdiqini worker də yoxlayır
+    if not sahiblik.domen_tesdiqlidir(url):
+        _log("TƏSDİQSİZ domen — skan edilmir")
+        _post(f"/api/aktiv-skan/{job_id}/xeta",
+              {"mesaj": f"«{domain}» worker-də təsdiqlənmədi — skan dayandırıldı."})
+        return True
+
+    if not _nuclei_var():
+        _post(f"/api/aktiv-skan/{job_id}/xeta", {
+            "mesaj": "nuclei tapılmadı. Quraşdır: github.com/projectdiscovery/nuclei "
+                     "və PATH-ə əlavə et."})
+        _log("XƏTA: nuclei PATH-də yoxdur")
+        return True
+
+    try:
+        skan_et(job_id, url)
+    except Exception as x:
+        _log("skan xətası:", x)
+        _post(f"/api/aktiv-skan/{job_id}/xeta", {"mesaj": f"Worker xətası: {x}"})
+    return True
+
+
+def main() -> None:
+    _log(f"worker başladı → API: {API} | açar: {'var' if ACAR else 'YOX'} | "
+         f"nuclei: {'var' if _nuclei_var() else 'YOX'}")
+    while True:
+        try:
+            if not bir_dovre():
+                time.sleep(BOŞ_GOZLEME)
+        except KeyboardInterrupt:
+            _log("dayandırıldı (Ctrl+C)")
+            break
+        except Exception as x:
+            _log("dövrə xətası:", x)
+            time.sleep(BOŞ_GOZLEME)
+
+
+if __name__ == "__main__":
+    main()
