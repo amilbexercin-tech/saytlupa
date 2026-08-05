@@ -20,7 +20,7 @@ import dns.resolver
 import httpx
 
 from . import db
-from .collectors.base import domen as domen_cixart
+from .collectors.base import tam_host
 from .config import ayarlar
 
 TXT_ACAR = "saytlupa-verify="
@@ -34,11 +34,17 @@ def owned_allowlist() -> set[str]:
 
 
 def _normalize(deyer: str) -> str:
-    """URL və ya domen → təmiz kök domen (magaza.az)."""
+    """URL və ya domen → təmiz host adı (www atılır).
+
+    Tam host adı işlədilir (tldextract-ın kök domeni yox), çünki platforma
+    subdomenləri — məs. `saytlupa-production.up.railway.app` — kök domenə
+    (`railway.app`) yığılmamalıdır; əks halda allowlist uyğun gəlmir.
+    """
     deyer = (deyer or "").strip().lower()
-    if "://" in deyer or "/" in deyer:
-        return domen_cixart(deyer)
-    return domen_cixart("http://" + deyer)
+    if "://" not in deyer:
+        deyer = "http://" + deyer
+    host = tam_host(deyer)
+    return host[4:] if host.startswith("www.") else host
 
 
 def domen_tesdiqlidir(deyer: str) -> bool:
