@@ -533,7 +533,10 @@ def xeta_siyahisi(limit: int = 50) -> list[dict]:
 
 @app.get("/")
 def ana_sehife() -> FileResponse:
-    return FileResponse(FRONTEND / "index.html")
+    # index.html keşlənməsin — statik fayllar `?v=` ilə busted olur, amma HTML
+    # özü keşlənsə brauzer köhnə skript siyahısını (yeni fayllar daxil) saxlayır.
+    return FileResponse(FRONTEND / "index.html",
+                        headers={"Cache-Control": "no-cache, must-revalidate"})
 
 
 if FRONTEND.exists():

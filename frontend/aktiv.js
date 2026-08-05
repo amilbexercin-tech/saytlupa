@@ -10,8 +10,14 @@ let aktivAxin = null;
 
 /* Təhlükəsizlik nəticəsi göstəriləndən sonra çağırılır (app.js-dən). */
 window.aktivHazirla = async function (domain, url) {
-  aktivDomain = domain || '';
   aktivUrl = url || '';
+  /* Domeni URL-in tam host adından götürürük (backend allowlist-i tam host
+     saxlayır). `base_domen` tldextract ilə `railway.app`-a yığır — uyğun gəlmir. */
+  try {
+    aktivDomain = new URL(aktivUrl).hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    aktivDomain = (domain || '').toLowerCase();
+  }
   el('aktiv-domen').value = aktivDomain;
   el('aktiv-telimat').innerHTML = '';
   el('aktiv-netice').innerHTML = '';
