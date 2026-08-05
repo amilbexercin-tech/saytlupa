@@ -30,6 +30,15 @@ from .base import kok_url
 # Səviyyə → bal cəzası (100-dən çıxılır). Riyazidir, dəyişməzdir.
 CEZA = {"kritik": 40, "yuksek": 20, "orta": 10, "asagi": 4, "melumat": 0}
 
+# HTML-də açıq sızan sirlərin dəqiq nümunələri (yalançı siqnal olmasın deyə spesifik).
+SIRR_NAXISLARI: list[tuple[str, str, str]] = [
+    ("sirr_google", "Google API açarı", r"AIza[0-9A-Za-z\-_]{35}"),
+    ("sirr_aws", "AWS giriş açarı", r"AKIA[0-9A-Z]{16}"),
+    ("sirr_stripe", "Stripe canlı açarı", r"sk_live_[0-9a-zA-Z]{24}"),
+    ("sirr_slack", "Slack token-i", r"xox[baprs]-[0-9A-Za-z\-]{10,}"),
+    ("sirr_private_key", "private key bloku", r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+]
+
 # Yoxlanan təhlükəsizlik başlıqları: (başlıq, səviyyə, ad, risk, həll)
 BASLIQ_YOXLAMALARI: list[tuple[str, str, str, str, str]] = [
     (
@@ -97,6 +106,43 @@ def _ds_store_imza(cavab: httpx.Response) -> bool:
     return b"Bud1" in cavab.content[:8]
 
 
+def _htpasswd_imza(cavab: httpx.Response) -> bool:
+    m = cavab.text[:1000]
+    return "<html" not in m.lower() and bool(re.search(r"^[^:\s]+:\$?", m.strip()))
+
+
+def _acar_fayl_imza(cavab: httpx.Response) -> bool:
+    """Private key / SSH açar faylları."""
+    return "-----BEGIN" in cavab.text[:400] and "PRIVATE KEY" in cavab.text[:400]
+
+
+def _aws_imza(cavab: httpx.Response) -> bool:
+    m = cavab.text[:1500]
+    return "aws_access_key_id" in m.lower() or bool(re.search(r"AKIA[0-9A-Z]{16}", m))
+
+
+def _htaccess_imza(cavab: httpx.Response) -> bool:
+    m = cavab.text[:1500]
+    return "<html" not in m.lower() and bool(
+        re.search(r"RewriteEngine|<IfModule|Order\s+(allow|deny)|AuthType", m, re.IGNORECASE))
+
+
+def _json_imza(cavab: httpx.Response) -> bool:
+    m = cavab.text[:600].lstrip()
+    return m.startswith("{") and ('"dependencies"' in cavab.text[:3000]
+                                  or '"name"' in cavab.text[:1500]
+                                  or '"require"' in cavab.text[:3000])
+
+
+def _web_config_imza(cavab: httpx.Response) -> bool:
+    return "<configuration" in cavab.text[:800] and "system.web" in cavab.text[:2000]
+
+
+def _npmrc_imza(cavab: httpx.Response) -> bool:
+    m = cavab.text[:800]
+    return "<html" not in m.lower() and ("_authToken" in m or "//registry" in m)
+
+
 FAYL_YOXLAMALARI = [
     ("/.env", "kritik", _env_imza, "«.env» faylı açıqdır",
      "Parollar, API açarları və verilənlər bazası girişi hər kəsə görünür.",
@@ -122,6 +168,42 @@ FAYL_YOXLAMALARI = [
     ("/.DS_Store", "asagi", _ds_store_imza, "«.DS_Store» faylı açıqdır",
      "Qovluqdakı fayl adları sızır — gizli səhifələr aşkarlana bilər.",
      "Bu macOS faylını serverdən sil və yükləmə siyahısına «.DS_Store» əlavə et."),
+    ("/.env.local", "kritik", _env_imza, "«.env.local» faylı açıqdır",
+     "Yerli mühitin parolları və açarları görünür.",
+     "Bu faylı veb qovluğundan çıxar."),
+    ("/.env.production", "kritik", _env_imza, "«.env.production» faylı açıqdır",
+     "İstehsal mühitinin parolları və açarları görünür.",
+     "Bu faylı veb qovluğundan çıxar."),
+    ("/.htpasswd", "kritik", _htpasswd_imza, "«.htpasswd» faylı açıqdır",
+     "İstifadəçi adları və parol hash-ləri sızır.",
+     "Bu faylı veb kökündən çıxar və girişi bağla."),
+    ("/.htaccess", "yuksek", _htaccess_imza, "«.htaccess» faylı açıqdır",
+     "Server qaydaları və gizli yollar görünür.",
+     "«.htaccess» faylına veb girişini qadağan et."),
+    ("/id_rsa", "kritik", _acar_fayl_imza, "SSH private açar («id_rsa») açıqdır",
+     "Serverə tam giriş verən gizli açar sızır.",
+     "Açarı dərhal sil və yenisini yarat (kompromis sayılır)."),
+    ("/.ssh/id_rsa", "kritik", _acar_fayl_imza, "«.ssh/id_rsa» açıqdır",
+     "Serverə giriş verən SSH açarı sızır.",
+     "Açarı dərhal sil və yenisi ilə əvəz et."),
+    ("/.aws/credentials", "kritik", _aws_imza, "AWS açarları («.aws/credentials») açıqdır",
+     "Bulud hesabına tam giriş verən açarlar sızır.",
+     "Açarları dərhal ləğv et və faylı serverdən sil."),
+    ("/web.config", "yuksek", _web_config_imza, "«web.config» açıqdır",
+     "IIS/ASP.NET konfiqurasiyası, bağlantı sətirləri görünə bilər.",
+     "Bu faylın verilməsini serverdə qadağan et."),
+    ("/composer.lock", "asagi", _json_imza, "«composer.lock» açıqdır",
+     "İstifadə olunan PHP paketləri və dəqiq versiyaları görünür.",
+     "Bu faylı veb qovluğundan çıxar."),
+    ("/package.json", "asagi", _json_imza, "«package.json» açıqdır",
+     "İstifadə olunan JS paketləri və versiyaları görünür.",
+     "Bu faylı veb kökündən çıxar."),
+    ("/.npmrc", "yuksek", _npmrc_imza, "«.npmrc» açıqdır",
+     "npm reyestr token-i (giriş açarı) sıza bilər.",
+     "Faylı sil və token-i yenilə."),
+    ("/dump.sql", "kritik", _sql_imza, "Baza dump-u («dump.sql») açıqdır",
+     "Bütün baza məzmunu yüklənə bilər.",
+     "Yedək fayllarını veb qovluğundan çıxar."),
 ]
 
 
@@ -179,6 +261,38 @@ def _basliq_tapintilari(b: dict, https: bool) -> list[dict]:
                 f"«{acar}» ASP.NET versiyasını açır.",
                 "Framework versiyası hücum üçün ipucu verir.",
                 f"{acar} başlığını sil.", "basliq"))
+
+    # CORS: hər mənbəyə açıq paylaşım
+    aco = str(b.get("access-control-allow-origin", "")).strip()
+    if aco == "*":
+        kredensial = str(b.get("access-control-allow-credentials", "")).lower() == "true"
+        tapintilar.append(_tapinti(
+            "cors_aciq", "CORS hər mənbəyə açıqdır (*)",
+            "yuksek" if kredensial else "orta",
+            "Access-Control-Allow-Origin: * — istənilən sayt bu API-yə sorğu göndərə bilər."
+            + (" Üstəlik Allow-Credentials: true — sessiya da paylaşılır." if kredensial else ""),
+            "Zərərli sayt istifadəçinin adından məlumat oxuya bilər.",
+            "Yalnız etibarlı mənbələrə icazə ver, «*» yerinə konkret domen yaz.", "basliq"))
+
+    # Zəif CSP: unsafe-inline / unsafe-eval XSS müdafiəsini zəiflədir
+    if csp and ("unsafe-inline" in csp or "unsafe-eval" in csp):
+        tapintilar.append(_tapinti(
+            "zeif_csp", "CSP zəifdir (unsafe-inline / unsafe-eval)", "orta",
+            "CSP var, amma «unsafe-inline» və ya «unsafe-eval» icazəsi verir.",
+            "Bu icazələr CSP-nin XSS-ə qarşı əsas faydasını aradan qaldırır.",
+            "CSP-dən unsafe-inline/unsafe-eval-i çıxar, nonce və ya hash işlət.", "basliq"))
+
+    # Zəif HSTS: müddət 6 aydan azdır
+    hsts = str(b.get("strict-transport-security", ""))
+    if hsts:
+        m = re.search(r"max-age\s*=\s*(\d+)", hsts)
+        if m and int(m.group(1)) < 15768000:  # ~6 ay
+            tapintilar.append(_tapinti(
+                "zeif_hsts", "HSTS müddəti çox qısadır", "asagi",
+                f"HSTS var, amma max-age azdır ({m.group(1)} san).",
+                "Qısa müddət HTTPS məcburiyyətini zəiflədir.",
+                "max-age dəyərini ən azı 31536000 (1 il) et.", "basliq"))
+
     return tapintilar
 
 
@@ -237,6 +351,23 @@ def _mezmun_tapintilari(url: str, html: str, https: bool) -> list[dict]:
                 "Səhifə server qovluğunun fayl siyahısını göstərir.",
                 "Gizli fayllar və struktur hücumçuya görünür.",
                 "Serverdə «autoindex»/directory listing-i söndür.", "html"))
+
+        # HTTP-yə göndərən forma (parol/məlumat şifrələnmədən gedir)
+        if re.search(r'<form[^>]+action\s*=\s*["\']http://', html, re.IGNORECASE):
+            tapintilar.append(_tapinti(
+                "forma_http", "Forma məlumatı şifrələnmədən (http://) göndərir", "yuksek",
+                "Səhifədə action-u http:// olan forma var.",
+                "İstifadəçinin yazdığı parol/məlumat açıq mətnlə gedir və oğurlana bilər.",
+                "Forma action-unu https:// et.", "html"))
+
+        # HTML-də açıq sızan sirlər (API açarları, private key)
+        for sirr_id, ad, naxis in SIRR_NAXISLARI:
+            if re.search(naxis, html):
+                tapintilar.append(_tapinti(
+                    sirr_id, f"HTML-də açıq sirr: {ad}", "kritik",
+                    f"Səhifə mənbəyində {ad} nümunəsi tapıldı.",
+                    "Açıq açar/token oğurlanıb sui-istifadə oluna bilər.",
+                    "Bu sirri koddan çıxar, dərhal ləğv edib yenisi ilə əvəz et.", "html"))
     return tapintilar
 
 
@@ -299,6 +430,82 @@ async def _fayl_yoxla(kok: str) -> list[dict]:
     return [t for t in neticeler if t]
 
 
+# Qovluq siyahılanması üçün yoxlanan ümumi qovluqlar
+QOVLUQLAR = ["/uploads/", "/images/", "/img/", "/files/", "/assets/", "/backup/", "/media/"]
+
+
+async def _elave_probelar(kok: str, https: bool) -> list[dict]:
+    """robots.txt sızması, security.txt yoxluğu, TRACE metodu, qovluq
+    siyahılanması — hamısı passiv, paralel. Xəta səssizcə keçilir."""
+    tapintilar: list[dict] = []
+
+    async with httpx.AsyncClient(
+        timeout=8, follow_redirects=False, verify=False, event_hooks=sebeke.HOOKLAR,
+    ) as m:
+
+        async def robots():
+            try:
+                c = await m.get(kok + "/robots.txt")
+            except Exception:
+                return
+            if c.status_code != 200 or "<html" in c.text[:200].lower():
+                return
+            hessas = re.findall(r"(?im)^\s*Disallow:\s*(\S*(?:admin|login|private|backup|"
+                                r"config|secret|panel|dashboard|wp-admin)\S*)", c.text)
+            if hessas:
+                nüm = ", ".join(dict.fromkeys(hessas))[:200]
+                tapintilar.append(_tapinti(
+                    "robots_sizma", "robots.txt həssas yolları açır", "asagi",
+                    f"robots.txt gizli yolları göstərir: {nüm}",
+                    "Hücumçu bu «gizli» qovluqları birbaşa yoxlaya bilər.",
+                    "Həssas yolları robots.txt-dən çıxar; qorumanı giriş nəzarəti ilə et.",
+                    "fayl"))
+
+        async def security_txt():
+            for yol in ("/.well-known/security.txt", "/security.txt"):
+                try:
+                    c = await m.get(kok + yol)
+                    if c.status_code == 200 and "contact" in c.text[:500].lower():
+                        return  # var — problem yoxdur
+                except Exception:
+                    pass
+            tapintilar.append(_tapinti(
+                "security_txt_yox", "security.txt yoxdur", "melumat",
+                "«/.well-known/security.txt» tapılmadı.",
+                "Təhlükəsizlik araşdırıcısının açıq bildirmək üçün rəsmi kanalı yoxdur.",
+                "Bir security.txt əlavə et (əlaqə + siyasət) — yaxşı təcrübədir.", "fayl"))
+
+        async def trace():
+            try:
+                c = await m.request("TRACE", kok + "/")
+            except Exception:
+                return
+            govde = c.text[:200].lower()
+            if c.status_code == 200 and "trace" in govde:
+                tapintilar.append(_tapinti(
+                    "trace_aciq", "TRACE metodu açıqdır", "asagi",
+                    "Server TRACE sorğusuna cavab verir.",
+                    "Cross-Site Tracing (XST) ilə başlıqlar/cookie oxuna bilər.",
+                    "Serverdə TRACE metodunu söndür.", "metod"))
+
+        async def qovluq(yol):
+            try:
+                c = await m.get(kok + yol)
+            except Exception:
+                return
+            if c.status_code == 200 and re.search(r"<title>\s*Index of /", c.text, re.IGNORECASE):
+                tapintilar.append(_tapinti(
+                    f"listing{yol}", f"Qovluq siyahılanması açıqdır: {yol}", "orta",
+                    f"«{yol}» qovluğunun fayl siyahısı görünür.",
+                    "Gizli fayllar və struktur hücumçuya açılır.",
+                    "Serverdə bu qovluq üçün autoindex-i söndür.", "fayl"))
+
+        await asyncio.gather(robots(), security_txt(), trace(),
+                             *[qovluq(y) for y in QOVLUQLAR])
+
+    return tapintilar
+
+
 async def _https_yonlendirme(kok: str, https: bool) -> list[dict]:
     """HTTP-nin HTTPS-ə yönləndirdiyini yoxlayır (yalnız sayt HTTPS-i
     dəstəkləyirsə mənalıdır)."""
@@ -347,7 +554,11 @@ def hesabla(tapintilar: list[dict]) -> dict:
         "herf": herf,
         "tapintilar": tapintilar,
         "sayi": sayi,
-        "yoxlanan": (len(BASLIQ_YOXLAMALARI) + len(FAYL_YOXLAMALARI) + 6),
+        # Yoxlanan maddələr: başlıq + fayl + qovluq + sirr nümunələri + sabit
+        # yoxlamalar (CORS, CSP, HSTS, cookie×3, qarışıq məzmun, forma, generator,
+        # sertifikat×3, https, robots, security.txt, TRACE).
+        "yoxlanan": (len(BASLIQ_YOXLAMALARI) + len(FAYL_YOXLAMALARI)
+                     + len(QOVLUQLAR) + len(SIRR_NAXISLARI) + 18),
     }
 
 
@@ -361,6 +572,7 @@ async def topla(url: str, html: str, basliqlar: dict, neticeler: dict | None = N
 
     # Şəbəkə tələb edən yoxlamalar paralel
     fayl_isi = _fayl_yoxla(kok)
+    elave_isi = _elave_probelar(kok, https)
     yonlendirme_isi = _https_yonlendirme(kok, https)
 
     tapintilar: list[dict] = []
@@ -369,8 +581,9 @@ async def topla(url: str, html: str, basliqlar: dict, neticeler: dict | None = N
     tapintilar += _mezmun_tapintilari(url, html or "", https)
     tapintilar += _sertifikat_tapintilari(neticeler)
 
-    fayl_tap, yon_tap = await asyncio.gather(fayl_isi, yonlendirme_isi)
+    fayl_tap, elave_tap, yon_tap = await asyncio.gather(fayl_isi, elave_isi, yonlendirme_isi)
     tapintilar += fayl_tap
+    tapintilar += elave_tap
     tapintilar += yon_tap
 
     return hesabla(tapintilar)

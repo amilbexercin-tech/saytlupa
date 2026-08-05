@@ -596,12 +596,16 @@ tehlDugme.addEventListener('click', async () => {
   });
 
   gedisatSetri('səhifə', 'yüklənir…');
-  await gozle(450);
-  gedisatSetri('təhlükəsizlik başlıqları', 'yoxlanılır…');
-  await gozle(400);
-  gedisatSetri('cookie & HTTPS', 'yoxlanılır…');
-  await gozle(400);
-  gedisatSetri('açıq həssas fayllar', 'yoxlanılır…');
+  await gozle(350);
+  gedisatSetri('təhlükəsizlik başlıqları', 'yoxlanılır… (CSP, HSTS, CORS)');
+  await gozle(320);
+  gedisatSetri('cookie & HTTPS & sertifikat', 'yoxlanılır…');
+  await gozle(320);
+  gedisatSetri('açıq həssas fayllar', 'yoxlanılır… (.env, .git, açarlar)');
+  await gozle(320);
+  gedisatSetri('gizli qovluqlar & robots.txt', 'yoxlanılır…');
+  await gozle(320);
+  gedisatSetri('sızan sirlər & qarışıq məzmun', 'yoxlanılır…');
 
   try {
     const cavab = await p;

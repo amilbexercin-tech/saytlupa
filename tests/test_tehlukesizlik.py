@@ -141,3 +141,57 @@ def test_bal_sifirin_altina_dushmur():
 def test_tapintilar_seviyyeye_gore_siralanir():
     n = tehl.hesabla([{"seviyye": "asagi"}, {"seviyye": "kritik"}, {"seviyye": "orta"}])
     assert [t["seviyye"] for t in n["tapintilar"]] == ["kritik", "orta", "asagi"]
+
+
+# ---------- dərin yoxlamalar (Gün 17+) ----------
+
+def test_cors_wildcard():
+    t = tehl._basliq_tapintilari({"access-control-allow-origin": "*"}, https=True)
+    assert "cors_aciq" in _idler(t)
+
+
+def test_cors_wildcard_kredensialla_daha_ciddi():
+    b = {"access-control-allow-origin": "*", "access-control-allow-credentials": "true"}
+    tap = [x for x in tehl._basliq_tapintilari(b, https=True) if x["id"] == "cors_aciq"][0]
+    assert tap["seviyye"] == "yuksek"
+
+
+def test_zeif_csp_unsafe_inline():
+    b = {"content-security-policy": "default-src 'self' 'unsafe-inline'"}
+    assert "zeif_csp" in _idler(tehl._basliq_tapintilari(b, https=True))
+
+
+def test_zeif_hsts_qisa_muddet():
+    b = {"strict-transport-security": "max-age=3600"}
+    assert "zeif_hsts" in _idler(tehl._basliq_tapintilari(b, https=True))
+
+
+def test_guclu_hsts_zeif_saymir():
+    b = {"strict-transport-security": "max-age=31536000; includeSubDomains"}
+    assert "zeif_hsts" not in _idler(tehl._basliq_tapintilari(b, https=True))
+
+
+def test_forma_http():
+    html = '<form action="http://sayt.az/giris" method="post"><input type="password"></form>'
+    assert "forma_http" in _idler(tehl._mezmun_tapintilari("https://sayt.az", html, True))
+
+
+def test_html_de_google_acar_sizmasi():
+    html = '<script>var k="AIza' + "b" * 35 + '";</script>'
+    assert "sirr_google" in _idler(tehl._mezmun_tapintilari("https://s.az", html, True))
+
+
+def test_html_de_private_key_sizmasi():
+    html = "<pre>-----BEGIN RSA PRIVATE KEY-----\nMIIE...</pre>"
+    assert "sirr_private_key" in _idler(tehl._mezmun_tapintilari("https://s.az", html, True))
+
+
+def test_temiz_html_sirr_tapmir():
+    html = "<html><body>Salam dünya</body></html>"
+    idler = _idler(tehl._mezmun_tapintilari("https://s.az", html, True))
+    assert not any(i.startswith("sirr_") for i in idler)
+
+
+def test_yeni_fayllar_siyahida():
+    yollar = {y[0] for y in tehl.FAYL_YOXLAMALARI}
+    assert {"/.env.local", "/.htpasswd", "/id_rsa", "/.aws/credentials", "/web.config"} <= yollar
