@@ -569,36 +569,70 @@ girish.addEventListener('keydown', (e) => { if (e.key === 'Enter') dugme.click()
 /* Tam analizdən ayrı, sürətli yoxlama: yalnız təhlükəsizlik kartını doldurur. */
 const tehlDugme = el('d-tehlukesizlik');
 
+const gozle = (ms) => new Promise((h) => setTimeout(h, ms));
+
 tehlDugme.addEventListener('click', async () => {
   const url = girish.value.trim();
   if (!url) { girish.focus(); return; }
 
   const kohne = tehlDugme.textContent;
   tehlDugme.disabled = true;
+  dugme.disabled = true;                 // analiz düyməsi də kilidlənir
   tehlDugme.textContent = 'yoxlanılır…';
+
+  // Adi analizlə eyni görünüş: gedişat paneli + matrix arxa fon
+  setirler.innerHTML = '';
+  qutuGedisat.classList.remove('gizli');
   butunBolmeleriGizlet();
-  el('tehlukesizlik').innerHTML = '<p class="alt">Təhlükəsizlik yoxlanılır…</p>';
-  gorset('k-tehlukesizlik');
+  basla = Date.now();
+  efektMatrix(true);
+  gedisatSetri('başladı', url);
+
+  // Sorğunu başladırıq; addımlar sorğu gedərkən sıra ilə görünür
+  const p = sorgu('/api/tehlukesizlik', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+
+  gedisatSetri('səhifə', 'yüklənir…');
+  await gozle(450);
+  gedisatSetri('təhlükəsizlik başlıqları', 'yoxlanılır…');
+  await gozle(400);
+  gedisatSetri('cookie & HTTPS', 'yoxlanılır…');
+  await gozle(400);
+  gedisatSetri('açıq həssas fayllar', 'yoxlanılır…');
 
   try {
-    const cavab = await sorgu('/api/tehlukesizlik', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    });
+    const cavab = await p;
     const s = await cavab.json();
+
     if (!cavab.ok) {
+      gedisatSetri('xəta', xetaMetni(s, cavab), 'pis');
       el('tehlukesizlik').innerHTML =
         `<div class="xeb sari">${tehlukesiz(xetaMetni(s, cavab))}</div>`;
+      gorset('k-tehlukesizlik');
       return;
     }
+
+    // Real nəticəyə əsaslanan yekun sətirlər
+    const say = s.sayi || {};
+    const cem = Object.values(say).reduce((a, b) => a + b, 0);
+    gedisatSetri('yoxlanan maddə', `${s.yoxlanan || 0}`, 'ok');
+    gedisatSetri('tapılan açıq', `${cem}`, cem ? 'pis' : 'ok');
+    gedisatSetri('HAZIR', `bal ${s.bal}/100 · ${s.herf}`, 'ok');
+
     tehlukesizlikCiz(s);
     el('k-tehlukesizlik').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (x) {
+    gedisatSetri('xəta', 'Server cavab vermədi', 'pis');
     el('tehlukesizlik').innerHTML =
       `<div class="xeb sari">Server cavab vermədi: ${tehlukesiz(x)}</div>`;
+    gorset('k-tehlukesizlik');
   } finally {
     tehlDugme.disabled = false;
+    dugme.disabled = false;
     tehlDugme.textContent = kohne;
+    efektMatrix(false);                  // matrix sönür
   }
 });
