@@ -22,6 +22,8 @@ from sse_starlette.sse import EventSourceResponse
 from . import analiz as analiz_xidmeti
 from . import builder, cache, db, hadise, izleme, llm, muqayise, qapi, rag, sebeke
 from . import __version__
+from .collectors import sertifikat, surat, tehlukesizlik
+from .collectors.base import domen as base_domen
 from .config import ayarlar
 from .schemas import (
     AnalizBasladi,
@@ -31,6 +33,7 @@ from .schemas import (
     SaytXulase,
     SualCavab,
     SualIstek,
+    TehlukesizlikIstek,
     Veziyyet,
     XetaIstek,
 )
@@ -155,6 +158,36 @@ async def analiz_basla(istek: AnalizIstek) -> AnalizBasladi:
 
     netice = analiz_xidmeti.basla(str(istek.url), istek.max_sehife)
     return AnalizBasladi(**netice)
+
+
+@app.post("/api/tehlukesizlik", dependencies=ACAR)
+async def tehlukesizlik_yoxla(istek: TehlukesizlikIstek) -> dict:
+    """Yalnız təhlükəsizlik auditi — tam analiz/crawl olmadan, sürətli.
+
+    Səhifəni bir dəfə çəkir, sertifikatı yoxlayır, sonra passiv auditi işlədir.
+    Tapıntı + bal qaytarır; interfeys eyni kartda göstərir.
+    """
+    url = str(istek.url)
+    sebeb = await asyncio.to_thread(sebeke.unvan_sebebi, url)
+    if sebeb:
+        raise HTTPException(400, sebeb)
+
+    try:
+        html, basliqlar, _yuklenme, _kod = await surat.olc_ve_getir(url)
+    except Exception as xeta:
+        raise HTTPException(502, f"Sayt yüklənmədi: {xeta}")
+
+    # Sertifikat (SSL) tapıntıları üçün — səhifə çəkilişi ilə paralel getmir,
+    # çünki tələb olunan yeganə asılılıqdır və keşlənir.
+    sert = await sertifikat.topla(url)
+    tehl = await tehlukesizlik.topla(url, html, basliqlar, {"sertifikat": sert})
+
+    return {
+        "ugurlu": tehl.get("ugurlu", False),
+        "url": url,
+        "domain": base_domen(url),
+        **(tehl.get("data") or {}),
+    }
 
 
 @app.get("/api/analyze/{analiz_id}/axin")

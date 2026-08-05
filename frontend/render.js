@@ -304,6 +304,62 @@ function muqayiseCedveli(m) {
     </tbody></table>`;
 }
 
+/* ---------------- təhlükəsizlik ---------------- */
+
+/* Səviyyə → rəng sinfi və Azərbaycanca etiket */
+const TEHL_SEVIYYE = {
+  kritik: ['pis', 'KRİTİK'],
+  yuksek: ['pis', 'Yüksək'],
+  orta: ['orta', 'Orta'],
+  asagi: ['yaxsi', 'Aşağı'],
+  melumat: ['', 'Məlumat'],
+};
+
+/* Həm tam analizin içindən (`s` = tehlukesizlik.data), həm də müstəqil
+   düymədən (`s` = endpoint cavabı) eyni funksiya çağırılır. */
+function tehlukesizlikCiz(s) {
+  if (!s || s.bal == null) {
+    el('tehlukesizlik').innerHTML =
+      '<p class="alt">Təhlükəsizlik yoxlaması aparıla bilmədi.</p>';
+    gorset('k-tehlukesizlik');
+    return;
+  }
+
+  const t = s.tapintilar || [];
+  const say = s.sayi || {};
+  const balSinif = s.bal >= 75 ? 'yaxsi' : s.bal >= 40 ? 'orta' : 'pis';
+
+  const xulase = ['kritik', 'yuksek', 'orta', 'asagi', 'melumat']
+    .filter((k) => say[k])
+    .map((k) => `<span class="teq ${TEHL_SEVIYYE[k][0]}">${say[k]} ${TEHL_SEVIYYE[k][1]}</span>`)
+    .join('') || '<span class="teq yaxsi">açıq tapılmadı ✓</span>';
+
+  const tapintiHtml = t.length
+    ? t.map((f) => {
+        const [sinif, etiket] = TEHL_SEVIYYE[f.seviyye] || ['', f.seviyye];
+        return `<div class="tehl-tapinti ${sinif}">
+          <div class="tehl-bas">
+            <span class="teq ${sinif}">${tehlukesiz(etiket)}</span>
+            <strong>${tehlukesiz(f.ad)}</strong>
+          </div>
+          <div class="tehl-risk"><b>Risk:</b> ${tehlukesiz(f.risk)}</div>
+          <div class="tehl-hell"><b>Həll:</b> ${tehlukesiz(f.hell)}</div>
+        </div>`;
+      }).join('')
+    : `<div class="xeb yasil">✓ Yoxlanan ${tehlukesiz(s.yoxlanan || 0)} maddədə
+        açıq tapılmadı — sayt əsas passiv yoxlamalardan keçir.</div>`;
+
+  el('tehlukesizlik').innerHTML =
+    `<div class="tehl-bal">
+       <div class="tehl-herf ${balSinif}">${tehlukesiz(s.herf || '')}</div>
+       <div>
+         <div class="tehl-rəqəm">${tehlukesiz(s.bal)}<span class="alt">/100</span></div>
+         <div class="teqler">${xulase}</div>
+       </div>
+     </div>${tapintiHtml}`;
+  gorset('k-tehlukesizlik');
+}
+
 /* ---------------- hamısı ---------------- */
 
 function neticeniCiz(n) {
@@ -317,6 +373,7 @@ function neticeniCiz(n) {
 
   umumiBaxis(n);
   aiHesabat(n);
+  tehlukesizlikCiz(data(n.xam, 'tehlukesizlik'));
   texnologiyalar(n);
   server(n);
   performans(n);

@@ -28,6 +28,19 @@ class SualIstek(BaseModel):
     session_id: int | None = None
 
 
+class TehlukesizlikIstek(BaseModel):
+    """Yalnız təhlükəsizlik yoxlaması üçün — tam analiz/crawl olmadan."""
+
+    url: HttpUrl
+
+    @field_validator("url")
+    @classmethod
+    def yalniz_http(cls, v: HttpUrl) -> HttpUrl:
+        if v.scheme not in ("http", "https"):
+            raise ValueError("Yalnız http/https ünvanları qəbul edilir")
+        return v
+
+
 class IzlemeIstek(BaseModel):
     site_id: int
     cron: str = "0 9 * * *"

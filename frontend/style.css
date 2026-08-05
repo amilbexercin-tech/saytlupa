@@ -394,3 +394,42 @@ select:focus { outline: 2px solid var(--vurgu); outline-offset: -1px; }
   .m-cedvel th, .m-cedvel td { padding: 6px 4px; }
   .m-cedvel th:first-child, .m-cedvel td:first-child { width: 34%; }
 }
+
+/* ---------- təhlükəsizlik ---------- */
+
+/* Səviyyə nişanları — mövcud `.teq` üzərində rəng əlavəsi */
+.teq.pis { border-color: var(--qirmizi); color: var(--qirmizi); }
+.teq.orta { border-color: var(--sari); color: var(--sari); }
+.teq.yaxsi { border-color: var(--yasil); color: var(--yasil); }
+
+.xeb.yasil {
+  background: rgba(61, 220, 151, 0.12); color: var(--yasil);
+  border-color: rgba(61, 220, 151, 0.3);
+}
+
+/* Bal başlığı: hərf + rəqəm + xülasə */
+.tehl-bal { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.tehl-herf {
+  font-size: 34px; font-weight: 800; width: 58px; height: 58px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 14px; background: var(--kart2); border: 2px solid var(--kenar);
+}
+.tehl-herf.yaxsi { color: var(--yasil); border-color: var(--yasil); }
+.tehl-herf.orta { color: var(--sari); border-color: var(--sari); }
+.tehl-herf.pis { color: var(--qirmizi); border-color: var(--qirmizi); }
+.tehl-rəqəm { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+.tehl-rəqəm .alt { font-size: 14px; color: var(--solgun); font-weight: 400; }
+
+/* Hər tapıntı — sol kənarda səviyyə rəngi */
+.tehl-tapinti {
+  background: var(--kart2); border: 1px solid var(--kenar);
+  border-left: 3px solid var(--kenar); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.tehl-tapinti.pis { border-left-color: var(--qirmizi); }
+.tehl-tapinti.orta { border-left-color: var(--sari); }
+.tehl-tapinti.yaxsi { border-left-color: var(--yasil); }
+.tehl-bas { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; flex-wrap: wrap; }
+.tehl-risk, .tehl-hell { font-size: 13px; line-height: 1.5; margin-top: 3px; }
+.tehl-risk b { color: var(--qirmizi); }
+.tehl-hell b { color: var(--yasil); }

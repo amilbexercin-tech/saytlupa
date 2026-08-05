@@ -25,8 +25,8 @@ function gedisatSetri(ad, metn, sinif = '') {
 }
 
 function butunBolmeleriGizlet() {
-  ['k-umumi', 'k-hesabat', 'k-tehvil', 'k-sohbet', 'k-texno', 'k-server',
-   'k-performans', 'k-dizayn', 'k-reklam', 'k-mezmun', 'k-muqayise',
+  ['k-umumi', 'k-hesabat', 'k-tehlukesizlik', 'k-tehvil', 'k-sohbet', 'k-texno',
+   'k-server', 'k-performans', 'k-dizayn', 'k-reklam', 'k-mezmun', 'k-muqayise',
    'k-sehifeler'].forEach(gizlet);
   el('xeberdarliq').innerHTML = '';
   el('sohbet').innerHTML = '';
@@ -563,3 +563,42 @@ muqayiseDugme.addEventListener('click', async () => {
 gonderDugme.addEventListener('click', sualGonder);
 sualGirish.addEventListener('keydown', (e) => { if (e.key === 'Enter') sualGonder(); });
 girish.addEventListener('keydown', (e) => { if (e.key === 'Enter') dugme.click(); });
+
+/* ---------------- yalnız təhlükəsizlik yoxlaması ---------------- */
+
+/* Tam analizdən ayrı, sürətli yoxlama: yalnız təhlükəsizlik kartını doldurur. */
+const tehlDugme = el('d-tehlukesizlik');
+
+tehlDugme.addEventListener('click', async () => {
+  const url = girish.value.trim();
+  if (!url) { girish.focus(); return; }
+
+  const kohne = tehlDugme.textContent;
+  tehlDugme.disabled = true;
+  tehlDugme.textContent = 'yoxlanılır…';
+  butunBolmeleriGizlet();
+  el('tehlukesizlik').innerHTML = '<p class="alt">Təhlükəsizlik yoxlanılır…</p>';
+  gorset('k-tehlukesizlik');
+
+  try {
+    const cavab = await sorgu('/api/tehlukesizlik', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const s = await cavab.json();
+    if (!cavab.ok) {
+      el('tehlukesizlik').innerHTML =
+        `<div class="xeb sari">${tehlukesiz(xetaMetni(s, cavab))}</div>`;
+      return;
+    }
+    tehlukesizlikCiz(s);
+    el('k-tehlukesizlik').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (x) {
+    el('tehlukesizlik').innerHTML =
+      `<div class="xeb sari">Server cavab vermədi: ${tehlukesiz(x)}</div>`;
+  } finally {
+    tehlDugme.disabled = false;
+    tehlDugme.textContent = kohne;
+  }
+});

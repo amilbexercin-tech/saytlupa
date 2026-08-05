@@ -22,6 +22,7 @@ from . import (
     sehife,
     sertifikat,
     surat,
+    tehlukesizlik,
     texnologiya,
 )
 
@@ -98,6 +99,13 @@ async def butun_analiz(
         neticeler[ad] = netice
         bildir(ad, "hazir" if netice.get("ugurlu") else "xeta")
 
+    # Təhlükəsizlik auditi ən sonda işləyir — çünki sertifikat nəticəsindən
+    # istifadə edir (təkrar TLS əl-sıxması etməmək üçün).
+    bildir("tehlukesizlik", "isleyir")
+    tehl = await tehlukesizlik.topla(url, html, basliqlar, neticeler)
+    neticeler["tehlukesizlik"] = tehl
+    bildir("tehlukesizlik", "hazir" if tehl.get("ugurlu") else "xeta")
+
     ugurlu_sayi = sum(1 for n in neticeler.values() if n.get("ugurlu"))
 
     return {
@@ -111,7 +119,7 @@ async def butun_analiz(
         "js_sayt": js_neticesi,
         "neticeler": neticeler,
         "ugurlu_toplayici": ugurlu_sayi,
-        "umumi_toplayici": len(ADLAR),
+        "umumi_toplayici": len(ADLAR) + 1,  # +1 = tehlukesizlik (ADLAR-dan sonra işləyir)
     }
 
 
