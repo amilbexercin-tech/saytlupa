@@ -17,3 +17,9 @@ storage/
 
 # JetBrains IDE
 .idea/
+
+# nuclei ikili faylı (böyük, git-ə düşməsin)
+tools/
+
+# Lokal worker launcher (Railway açarını saxlayır — git-ə düşməsin)
+AKTIV-SKAN-BASLAT.bat

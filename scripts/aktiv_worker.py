@@ -36,15 +36,21 @@ KOK = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(KOK))
 
 from backend import nuclei_parse  # noqa: E402
-from backend import sahiblik  # noqa: E402
-from backend.config import ayarlar  # noqa: E402
 
 API = os.getenv("SAYTLUPA_API", "http://localhost:8000").rstrip("/")
-ACAR = os.getenv("API_ACAR") or ayarlar.api_acar
+ACAR = os.getenv("API_ACAR", "")
 BASLIQ = {"X-API-Acar": ACAR} if ACAR else {}
 
 BOŞ_GOZLEME = 5          # növbə boşdursa bu qədər saniyə gözlə
 MAX_MUDDET = 900         # bir skan ən çoxu bu qədər saniyə (15 dəq)
+
+
+def _nuclei_yol() -> str | None:
+    """nuclei-nin yerini tapır: əvvəl repo `tools/`, sonra PATH."""
+    yerli = KOK / "tools" / ("nuclei.exe" if os.name == "nt" else "nuclei")
+    if yerli.exists():
+        return str(yerli)
+    return shutil.which("nuclei")
 
 
 def _log(*a):
@@ -61,14 +67,27 @@ def _post(yol: str, govde: dict) -> dict:
 
 
 def _nuclei_var() -> bool:
-    return shutil.which("nuclei") is not None
+    return _nuclei_yol() is not None
+
+
+def _domen_tesdiqli(domain: str) -> bool:
+    """Sahibliyi API-dən soruşur (doğru mənbə — Railway-dəki allowlist + baza).
+
+    Müdafiə dərinliyi: iş API-də onsuz da təsdiqlənib, worker yenidən yoxlayır.
+    """
+    try:
+        c = httpx.get(f"{API}/api/sahiblik", headers=BASLIQ, timeout=15)
+        siyahi = c.json() if c.status_code == 200 else []
+        return any(d.get("domain") == domain for d in siyahi)
+    except Exception:
+        return False
 
 
 def skan_et(job_id: int, url: str) -> None:
     """nuclei-ni işə salır, tapıntıları toplayır və API-yə göndərir."""
     tapintilar: list[dict] = []
     emr = [
-        "nuclei", "-u", url, "-jsonl", "-silent",
+        _nuclei_yol(), "-u", url, "-jsonl", "-silent",
         "-severity", "critical,high,medium,low,info",
         "-rate-limit", "50", "-timeout", "10", "-retries", "1",
         "-no-interactsh",
@@ -135,8 +154,8 @@ def bir_dovre() -> bool:
     job_id, url, domain = is_["job_id"], is_["target_url"], is_["domain"]
     _log(f"iş #{job_id}: {url}")
 
-    # Müdafiə dərinliyi: domen təsdiqini worker də yoxlayır
-    if not sahiblik.domen_tesdiqlidir(url):
+    # Müdafiə dərinliyi: domen təsdiqini worker də API-dən yoxlayır
+    if not _domen_tesdiqli(domain):
         _log("TƏSDİQSİZ domen — skan edilmir")
         _post(f"/api/aktiv-skan/{job_id}/xeta",
               {"mesaj": f"«{domain}» worker-də təsdiqlənmədi — skan dayandırıldı."})
