@@ -67,6 +67,7 @@ class GedisatIstek(BaseModel):
 
     mesaj: str = Field(max_length=500)
     faiz: int | None = None
+    sinif: str = ""   # "" | "ok" | "pis" — interfeysdə rəng üçün
 
 
 class NeticeIstek(BaseModel):

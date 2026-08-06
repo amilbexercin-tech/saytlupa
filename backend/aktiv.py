@@ -62,14 +62,15 @@ def novbeden_goturt() -> dict | None:
         return {"job_id": skan.id, "target_url": skan.target_url, "domain": skan.domain}
 
 
-def gedisat_yaz(job_id: int, mesaj: str, faiz: int | None = None) -> None:
+def gedisat_yaz(job_id: int, mesaj: str, faiz: int | None = None,
+                sinif: str = "") -> None:
     """Gedişatı bazaya yazır və SSE-yə ötürür."""
     with db.sessiya() as s:
         skan = s.get(db.AktivSkan, job_id)
         if skan:
             skan.gedisat = mesaj[:500]
             s.commit()
-    hadise.gonder(_hid(job_id), "gedisat", mesaj=mesaj, faiz=faiz)
+    hadise.gonder(_hid(job_id), "gedisat", mesaj=mesaj, faiz=faiz, sinif=sinif)
 
 
 def netice_yaz(job_id: int, tapintilar: list[dict]) -> dict:

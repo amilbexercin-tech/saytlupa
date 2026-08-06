@@ -130,7 +130,8 @@ el('aktiv-basla').addEventListener('click', async () => {
 
   aktivAxin.addEventListener('gedisat', (e) => {
     const q = JSON.parse(e.data || '{}');
-    gedisatSetri('nuclei', q.mesaj || '');
+    const etiket = q.faiz != null ? `nuclei ${q.faiz}%` : 'nuclei';
+    gedisatSetri(etiket, q.mesaj || '', q.sinif || '');
   });
   aktivAxin.addEventListener('hazir', async (e) => {
     const q = JSON.parse(e.data || '{}');

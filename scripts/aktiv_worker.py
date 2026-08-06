@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -83,39 +84,74 @@ def _domen_tesdiqli(domain: str) -> bool:
         return False
 
 
+# nuclei -stats sətrindən irəliləyişi çıxarmaq üçün: "Requests: 4500/58000 (7%)"
+_FAIZ_NAXIS = re.compile(r"(\d+)\s*%")
+_ISTEK_NAXIS = re.compile(r"[Rr]equests?[:\s]+(\d+)\s*/\s*(\d+)")
+
+# Səviyyə → interfeys rəngi
+_SINIF = {"kritik": "pis", "yuksek": "pis", "orta": "pis", "asagi": "ok", "melumat": "ok"}
+_NISAN = {"kritik": "🔴", "yuksek": "🟠", "orta": "🟡", "asagi": "🔵", "melumat": "⚪"}
+
+
 def skan_et(job_id: int, url: str) -> None:
-    """nuclei-ni işə salır, tapıntıları toplayır və API-yə göndərir."""
+    """nuclei-ni işə salır; hər tapıntını və irəliləyişi CANLI göndərir."""
     tapintilar: list[dict] = []
     emr = [
-        _nuclei_yol(), "-u", url, "-jsonl", "-silent",
+        _nuclei_yol(), "-u", url, "-jsonl",
+        "-stats", "-stats-interval", "3",       # irəliləyiş stderr-ə yazılır
         "-severity", "critical,high,medium,low,info",
         "-rate-limit", "50", "-timeout", "10", "-retries", "1",
         "-no-interactsh",
     ]
     _log("nuclei:", " ".join(emr))
-    _post(f"/api/aktiv-skan/{job_id}/gedisat", {"mesaj": "nuclei başladı", "faiz": 5})
+    _post(f"/api/aktiv-skan/{job_id}/gedisat",
+          {"mesaj": "nuclei başladı — şablonlar yüklənir", "faiz": 3})
 
     basla = time.time()
-    proses = subprocess.Popen(emr, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+    # stderr → stdout birləşdirilir: JSON sətir = tapıntı, qalan = stats/log
+    proses = subprocess.Popen(emr, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               text=True, encoding="utf-8", errors="replace")
-    son_bildiris = 0.0
+    son_dayan_yoxlama = 0.0
+
+    def dayanibmi() -> bool:
+        cavab = _post(f"/api/aktiv-skan/{job_id}/gedisat",
+                      {"mesaj": f"skan gedir — {len(tapintilar)} tapıntı"})
+        return bool(cavab.get("dayandirildi"))
+
     try:
         for setir in proses.stdout:
             setir = setir.strip()
-            if setir:
+            if not setir:
+                continue
+
+            if setir.startswith("{"):
+                # Tapıntı — dərhal canlı göndər
                 t = nuclei_parse.bir_tapinti(_yukle(setir))
                 if t:
                     tapintilar.append(t)
+                    sev = t["seviyye"]
+                    _post(f"/api/aktiv-skan/{job_id}/gedisat", {
+                        "mesaj": f"{_NISAN.get(sev, '•')} {t['ad']}",
+                        "sinif": _SINIF.get(sev, ""),
+                    })
+            else:
+                # nuclei stats sətri — faizi çıxar
+                m = _ISTEK_NAXIS.search(setir)
+                f = _FAIZ_NAXIS.search(setir)
+                if m or f:
+                    faiz = int(f.group(1)) if f else None
+                    if m and not faiz:
+                        edilmis, umumi = int(m.group(1)), max(1, int(m.group(2)))
+                        faiz = min(99, int(edilmis * 100 / umumi))
+                    _post(f"/api/aktiv-skan/{job_id}/gedisat", {
+                        "mesaj": f"şablonlar yoxlanılır… {len(tapintilar)} tapıntı",
+                        "faiz": faiz,
+                    })
 
             indi = time.time()
-            # Hər ~2 saniyədən bir gedişat + dayandırma yoxlaması
-            if indi - son_bildiris > 2:
-                son_bildiris = indi
-                cavab = _post(f"/api/aktiv-skan/{job_id}/gedisat", {
-                    "mesaj": f"skan gedir — {len(tapintilar)} tapıntı",
-                    "faiz": None,
-                })
-                if cavab.get("dayandirildi"):
+            if indi - son_dayan_yoxlama > 3:      # dayandırma yoxlaması
+                son_dayan_yoxlama = indi
+                if dayanibmi():
                     _log("dayandırıldı — nuclei kəsilir")
                     proses.kill()
                     return
@@ -129,6 +165,8 @@ def skan_et(job_id: int, url: str) -> None:
             proses.kill()
 
     _log(f"bitdi — {len(tapintilar)} tapıntı")
+    _post(f"/api/aktiv-skan/{job_id}/gedisat",
+          {"mesaj": f"skan bitdi — {len(tapintilar)} tapıntı işlənir", "faiz": 100})
     _post(f"/api/aktiv-skan/{job_id}/netice", {"tapintilar": tapintilar})
 
 
