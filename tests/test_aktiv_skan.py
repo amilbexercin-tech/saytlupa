@@ -182,6 +182,67 @@ def test_gedisat_endpointi_hadiseye_dusur(monkeypatch):
     aktiv.dayandir(job_id)
 
 
+def test_axin_baglananda_novbe_silinmir(monkeypatch):
+    """Bir SSE bağlantısının bağlanması digərinin növbəsini öldürməməlidir.
+
+    Növbə paylaşılandır. Endpoint `finally`-də `hadise.temizle()` çağıranda
+    ikinci qoşulma (səhifə yeniləmə, EventSource-un öz yenidən qoşulması, ikinci
+    tab) bağlananda növbə lüğətdən silinirdi; worker sonrakı hadisəni YENİ
+    növbəyə qoyurdu və hələ qoşulu qalan brauzer əbədi kor qalırdı — matrix
+    fırlanır, gedişat gəlmir.
+    """
+    import asyncio
+
+    from backend import hadise, main
+
+    monkeypatch.setattr(ayarlar, "owned_domains", "axin-test.az")
+    db.baza_qur()
+    job_id = aktiv.yeni_skan("https://axin-test.az")["job_id"]
+    hid = aktiv._hid(job_id)
+
+    async def bir_qosulma() -> dict:
+        novbe = hadise.novbe(hid)
+        axin = main.aktiv_axin_qeydleri(job_id, novbe)
+        ilk = await axin.__anext__()      # qoşulan kimi gələn vəziyyət
+        await axin.aclose()               # brauzer bağlandı
+        return ilk
+
+    ilk = asyncio.run(bir_qosulma())
+
+    assert hadise.aktivdir(hid), "SSE bağlananda növbə silindi"
+    # İkinci qoşulma eyni növbəni görməlidir (obyekt dəyişməyib)
+    assert "növbədə gözləyir" in ilk["data"], ilk
+
+    aktiv.dayandir(job_id)                # test bazasını təmiz saxla
+
+
+def test_axin_qosulan_kimi_isleyen_skanin_gedisatini_verir(monkeypatch):
+    """Səhifə yenilənəndə ekran boş qalmamalı — son məlum gedişat gəlməlidir."""
+    import asyncio
+
+    from backend import hadise, main
+
+    monkeypatch.setattr(ayarlar, "owned_domains", "davam-test.az")
+    db.baza_qur()
+    job_id = aktiv.yeni_skan("https://davam-test.az")["job_id"]
+    # Statusu birbaşa qoyuruq: `novbeden_goturt()` ƏN KÖHNƏ gözləyən işi
+    # götürür, yəni başqa testin işi bu testi poza bilər.
+    with db.sessiya() as s:
+        s.get(db.AktivSkan, job_id).status = "isleyir"
+        s.commit()
+    aktiv.gedisat_yaz(job_id, "yoxlanılır · 900/18460 sorğu", 12,
+                      gorunus="veziyyet")
+
+    async def bir_qosulma() -> dict:
+        return await main.aktiv_axin_qeydleri(
+            job_id, hadise.novbe(aktiv._hid(job_id))).__anext__()
+
+    ilk = asyncio.run(bir_qosulma())
+    assert "900/18460" in ilk["data"], ilk
+
+    aktiv.dayandir(job_id)
+
+
 # ---------- worker: canlı gedişat ----------
 #
 # Əsas tələb: nuclei şablonları yükləyərkən **dəqiqələrlə** heç nə yazmır.

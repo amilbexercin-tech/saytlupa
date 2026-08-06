@@ -273,6 +273,52 @@ def aktiv_skan_oxu(job_id: int) -> dict:
     return netice
 
 
+def _aktiv_veziyyet_qeydi(job_id: int) -> dict:
+    """İşin indiki vəziyyəti — qoşulan kimi və növbədə gözləyərkən göndərilir."""
+    v = aktiv_skan.oxu(job_id) or {}
+    mesaj = {
+        "gozleyir": "növbədə gözləyir — worker boşalan kimi başlayacaq",
+        "bitdi": "skan bitdi",
+        "dayandirildi": "skan dayandırılıb",
+    }.get(v.get("status", "")) or v.get("gedisat") or "qoşuldu"
+    return {"nov": "gedisat", "mesaj": mesaj, "faiz": None, "sinif": "",
+            "gorunus": "veziyyet"}
+
+
+async def aktiv_axin_qeydleri(job_id: int, novbe):
+    """Aktiv skanın SSE qeydlərini verir. Endpoint-dən ayrıdır ki, sınanabilsin.
+
+    Növbə **paylaşılandır**: burada `hadise.temizle()` çağırılsa, ikinci bir
+    qoşulma (səhifə yeniləmə, EventSource-un öz yenidən qoşulması, ikinci tab)
+    bağlananda hələ qoşulu qalan brauzerin növbəsi lüğətdən silinir, sonrakı
+    `gonder` YENİ növbə yaradır və köhnə oxucu əbədi kor qalır — matrix fırlanır,
+    gedişat gəlmir. Təmizləmə `bitir()` + `SAXLAMA` süpürgəsinin işidir
+    (bax: hadise.py).
+    """
+    # Qoşulan kimi indiki vəziyyət gedir ki, səhifə yenilənəndə və ya iş hələ
+    # növbədə gözləyəndə ekran boş qalmasın.
+    yield {"event": "gedisat",
+           "data": json.dumps(_aktiv_veziyyet_qeydi(job_id), ensure_ascii=False)}
+    while True:
+        try:
+            qeyd = await asyncio.wait_for(novbe.get(), timeout=SSE_GOZLEME)
+        except asyncio.TimeoutError:
+            # Uzun sükut: iş hələ növbədədirsə bunu de, yoxsa sadəcə nəbz.
+            if (aktiv_skan.oxu(job_id) or {}).get("status") == "gozleyir":
+                yield {"event": "gedisat",
+                       "data": json.dumps(_aktiv_veziyyet_qeydi(job_id),
+                                          ensure_ascii=False)}
+            else:
+                yield {"event": "nebz", "data": "{}"}
+            continue
+        yield {
+            "event": qeyd["nov"],
+            "data": json.dumps(qeyd, ensure_ascii=False, default=str),
+        }
+        if qeyd["nov"] == "son":
+            break
+
+
 @app.get("/api/aktiv-skan/{job_id}/axin")
 async def aktiv_skan_axin(job_id: int):
     """Aktiv skanın canlı gedişatı (SSE) — analizlə eyni nümunə."""
@@ -280,26 +326,7 @@ async def aktiv_skan_axin(job_id: int):
         raise HTTPException(404, "Belə skan yoxdur")
 
     hid = aktiv_skan._hid(job_id)
-    novbe = hadise.novbe(hid)
-
-    async def axin():
-        try:
-            while True:
-                try:
-                    qeyd = await asyncio.wait_for(novbe.get(), timeout=SSE_GOZLEME)
-                except asyncio.TimeoutError:
-                    yield {"event": "nebz", "data": "{}"}
-                    continue
-                yield {
-                    "event": qeyd["nov"],
-                    "data": json.dumps(qeyd, ensure_ascii=False, default=str),
-                }
-                if qeyd["nov"] == "son":
-                    break
-        finally:
-            hadise.temizle(hid)
-
-    return EventSourceResponse(axin())
+    return EventSourceResponse(aktiv_axin_qeydleri(job_id, hadise.novbe(hid)))
 
 
 @app.get("/api/analyze/{analiz_id}/axin")
@@ -311,22 +338,22 @@ async def analiz_axini(analiz_id: int):
     novbe = hadise.novbe(analiz_id)
 
     async def axin():
-        try:
-            while True:
-                try:
-                    qeyd = await asyncio.wait_for(novbe.get(), timeout=SSE_GOZLEME)
-                except asyncio.TimeoutError:
-                    yield {"event": "nebz", "data": "{}"}
-                    continue
+        # `temizle()` qəsdən yoxdur — növbə paylaşılandır, ikinci qoşulmanın
+        # bağlanması hələ qoşulu qalan brauzeri kor qoyurdu. Təmizləmə
+        # `bitir()` + `SAXLAMA` süpürgəsi ilə olur (bax: hadise.py).
+        while True:
+            try:
+                qeyd = await asyncio.wait_for(novbe.get(), timeout=SSE_GOZLEME)
+            except asyncio.TimeoutError:
+                yield {"event": "nebz", "data": "{}"}
+                continue
 
-                yield {
-                    "event": qeyd["nov"],
-                    "data": json.dumps(qeyd, ensure_ascii=False, default=str),
-                }
-                if qeyd["nov"] == "son":
-                    break
-        finally:
-            hadise.temizle(analiz_id)
+            yield {
+                "event": qeyd["nov"],
+                "data": json.dumps(qeyd, ensure_ascii=False, default=str),
+            }
+            if qeyd["nov"] == "son":
+                break
 
     return EventSourceResponse(axin())
 
