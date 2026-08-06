@@ -244,7 +244,8 @@ def aktiv_skan_novbe() -> dict:
 
 @app.post("/api/aktiv-skan/{job_id}/gedisat", dependencies=ACAR)
 def aktiv_skan_gedisat(job_id: int, istek: GedisatIstek) -> dict:
-    aktiv_skan.gedisat_yaz(job_id, istek.mesaj, istek.faiz, istek.sinif, istek.nov)
+    aktiv_skan.gedisat_yaz(job_id, istek.mesaj, istek.faiz, istek.sinif,
+                           istek.gorunus)
     return {"ok": True, "dayandirildi": aktiv_skan.dayandirilibmi(job_id)}
 
 

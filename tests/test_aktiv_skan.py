@@ -145,6 +145,43 @@ def test_dayandir(monkeypatch):
     assert aktiv.dayandirilibmi(job_id) is True
 
 
+def test_gedisat_endpointi_hadiseye_dusur(monkeypatch):
+    """Worker → API → SSE zənciri REAL endpoint üzərindən yoxlanılır.
+
+    Bu test ona görə var ki, worker testləri `_post`-u əvəzləyir və endpoint-i
+    heç vaxt işlətmir. Bir dəfə `gorunus` sahəsi `hadise.gonder`-in `nov`
+    parametri ilə toqquşdu: baza yenilənirdi, hadisə isə TypeError-la itirdi —
+    ekran boş qalırdı. Bu zənciri qoruyur.
+    """
+    from fastapi.testclient import TestClient
+
+    from backend import hadise
+    from backend.main import app
+
+    monkeypatch.setattr(ayarlar, "owned_domains", "hadise-test.az")
+    db.baza_qur()
+    job_id = aktiv.yeni_skan("https://hadise-test.az")["job_id"]
+    hadise.temizle(aktiv._hid(job_id))
+
+    muvekkil = TestClient(app)
+    cavab = muvekkil.post(
+        f"/api/aktiv-skan/{job_id}/gedisat",
+        json={"mesaj": "yoxlanılır", "faiz": 42, "gorunus": "veziyyet"},
+    )
+    assert cavab.status_code == 200, cavab.text
+
+    novbe = hadise.novbe(aktiv._hid(job_id))
+    assert not novbe.empty(), "gedişat hadisəsi SSE növbəsinə düşmədi"
+    qeyd = novbe.get_nowait()
+    assert qeyd["nov"] == "gedisat"          # hadisə növü
+    assert qeyd["gorunus"] == "veziyyet"     # interfeys göstərilişi
+    assert qeyd["faiz"] == 42
+
+    # Test bazası qaçışlar arasında qalır: iş «gozleyir» qalsa, növbəti
+    # qaçışda `novbeden_goturt()` onu götürüb başqa testi pozar.
+    aktiv.dayandir(job_id)
+
+
 # ---------- worker: canlı gedişat ----------
 #
 # Əsas tələb: nuclei şablonları yükləyərkən **dəqiqələrlə** heç nə yazmır.

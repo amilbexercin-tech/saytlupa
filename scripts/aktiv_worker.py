@@ -155,9 +155,10 @@ def skan_et(job_id: int, url: str) -> None:
     _log("nuclei:", " ".join(emr))
 
     def xeber(mesaj: str, faiz: int | None = None, sinif: str = "",
-              nov: str = "setir") -> dict:
+              gorunus: str = "setir") -> dict:
         return _post(f"/api/aktiv-skan/{job_id}/gedisat",
-                     {"mesaj": mesaj, "faiz": faiz, "sinif": sinif, "nov": nov})
+                     {"mesaj": mesaj, "faiz": faiz, "sinif": sinif,
+                      "gorunus": gorunus})
 
     xeber("nuclei başladı — şablonlar yüklənir", 3)
 
@@ -224,7 +225,7 @@ def skan_et(job_id: int, url: str) -> None:
                 kecen = int(indi - basla)
                 cavab = xeber(
                     f"{merhele} · {kecen // 60}:{kecen % 60:02d} · "
-                    f"{len(tapintilar)} tapıntı", faiz, nov="veziyyet")
+                    f"{len(tapintilar)} tapıntı", faiz, gorunus="veziyyet")
                 if cavab.get("dayandirildi"):
                     _log("dayandırıldı — nuclei kəsilir")
                     dayandirildi = True

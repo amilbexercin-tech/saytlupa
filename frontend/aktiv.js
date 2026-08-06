@@ -142,7 +142,7 @@ el('aktiv-basla').addEventListener('click', async () => {
   aktivAxin.addEventListener('gedisat', (e) => {
     aktivQopma = 0;                       // hadisə gəldi → əlaqə sağlamdır
     const q = JSON.parse(e.data || '{}');
-    if (q.nov === 'veziyyet') {
+    if (q.gorunus === 'veziyyet') {
       /* Taymer yeniləməsi — hər 2 saniyədən bir gəlir, siyahını doldurmasın. */
       aktivCanli(q.mesaj || '', q.faiz);
       return;

@@ -71,7 +71,9 @@ class GedisatIstek(BaseModel):
     # "setir" → gedişat siyahısına yeni sətir kimi əlavə olunur (tapıntı, jurnal);
     # "veziyyet" → yalnız üstdəki canlı vəziyyət sətrini yeniləyir. Taymer
     # yeniləmələri hər 2 saniyədən bir gəlir — onlar siyahını doldurmamalıdır.
-    nov: str = "setir"
+    # Ad qəsdən `nov` deyil: `hadise.gonder(analiz_id, nov, ...)`-un ikinci
+    # parametri onsuz da `nov`-dur (hadisə növü) — toqquşurdu.
+    gorunus: str = "setir"
 
 
 class NeticeIstek(BaseModel):
