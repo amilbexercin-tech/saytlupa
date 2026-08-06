@@ -63,14 +63,19 @@ def novbeden_goturt() -> dict | None:
 
 
 def gedisat_yaz(job_id: int, mesaj: str, faiz: int | None = None,
-                sinif: str = "") -> None:
-    """Gedişatı bazaya yazır və SSE-yə ötürür."""
+                sinif: str = "", nov: str = "setir") -> None:
+    """Gedişatı bazaya yazır və SSE-yə ötürür.
+
+    `nov` interfeys üçündür: "veziyyet" — canlı vəziyyət sətrini əvəz edir,
+    "setir" — gedişat siyahısına əlavə olunur.
+    """
     with db.sessiya() as s:
         skan = s.get(db.AktivSkan, job_id)
         if skan:
             skan.gedisat = mesaj[:500]
             s.commit()
-    hadise.gonder(_hid(job_id), "gedisat", mesaj=mesaj, faiz=faiz, sinif=sinif)
+    hadise.gonder(_hid(job_id), "gedisat", mesaj=mesaj, faiz=faiz, sinif=sinif,
+                  nov=nov)
 
 
 def netice_yaz(job_id: int, tapintilar: list[dict]) -> dict:

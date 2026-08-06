@@ -23,10 +23,12 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -44,6 +46,8 @@ BASLIQ = {"X-API-Acar": ACAR} if ACAR else {}
 
 BOŞ_GOZLEME = 5          # növbə boşdursa bu qədər saniyə gözlə
 MAX_MUDDET = 900         # bir skan ən çoxu bu qədər saniyə (15 dəq)
+TIK = 2.0                # nuclei sussa BELƏ bu qədər saniyədən bir xəbər ver
+JURNAL_HEDDI = 150       # nuclei jurnalından ən çoxu bu qədər sətir ötürülür
 
 
 def _nuclei_yol() -> str | None:
@@ -84,89 +88,164 @@ def _domen_tesdiqli(domain: str) -> bool:
         return False
 
 
-# nuclei -stats sətrindən irəliləyişi çıxarmaq üçün: "Requests: 4500/58000 (7%)"
-_FAIZ_NAXIS = re.compile(r"(\d+)\s*%")
-_ISTEK_NAXIS = re.compile(r"[Rr]equests?[:\s]+(\d+)\s*/\s*(\d+)")
-
 # Səviyyə → interfeys rəngi
 _SINIF = {"kritik": "pis", "yuksek": "pis", "orta": "pis", "asagi": "ok", "melumat": "ok"}
 _NISAN = {"kritik": "🔴", "yuksek": "🟠", "orta": "🟡", "asagi": "🔵", "melumat": "⚪"}
 
+# nuclei jurnal sətri: "[INF] Templates loaded for current scan: 8412".
+# Yalnız bunlar ötürülür — ASCII banner və versiya sətirləri süzülüb atılır.
+_JURNAL_NAXIS = re.compile(r"^\[(INF|WRN|ERR|FTL|DBG|VER)\]\s*(.+)$")
+_ANSI_NAXIS = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def _prosess_ac(emr: list[str]) -> subprocess.Popen:
+    """nuclei-ni işə salır. Borular AYRIdır: stdout = tapıntı, stderr = gedişat.
+
+    Testlər bu funksiyanı əvəzləyir (real nuclei olmadan skan axınını yoxlamaq).
+    """
+    return subprocess.Popen(emr, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, encoding="utf-8", errors="replace")
+
+
+def _boru_oxu(boru, etiket: str, novbe: queue.Queue) -> None:
+    """Borunu AYRICA sapda oxuyur və növbəyə ötürür.
+
+    Bu, düyün nöqtəsidir: nuclei şablonları yükləyərkən dəqiqələrlə heç nə
+    yazmır. Oxuma əsas dövrədə olsaydı, dövrə həmin müddət bloklanar,
+    gedişat göndərilməz, «dayandır» düyməsi və vaxt limiti işləməzdi.
+    """
+    try:
+        for setir in boru:
+            novbe.put((etiket, setir.rstrip("\n")))
+    except Exception:                       # boru qırıldı — skan onsuz da bitir
+        pass
+    finally:
+        novbe.put((etiket, None))           # bu axın bağlandı
+
+
+def _faiz_cixar(qeyd: dict) -> int | None:
+    """`-stats-json` qeydindən faizi götürür (dəyərlər mətn kimi gəlir)."""
+    xam = str(qeyd.get("percent", "")).strip()
+    if not xam:
+        return None
+    try:
+        return max(1, min(99, int(float(xam))))
+    except ValueError:
+        return None
+
 
 def skan_et(job_id: int, url: str) -> None:
-    """nuclei-ni işə salır; hər tapıntını və irəliləyişi CANLI göndərir."""
+    """nuclei-ni işə salır; tapıntıları, nuclei jurnalını və faizi CANLI göndərir.
+
+    Axın: iki oxuyucu sap borulardan sətirləri növbəyə tökür, əsas dövrə isə
+    onları emal edir **və** `TIK` saniyədən bir — nuclei sussa belə — vəziyyət
+    göndərir, dayandırmanı və vaxt limitini yoxlayır. Beləliklə ekran heç vaxt
+    donmur.
+    """
     tapintilar: list[dict] = []
     emr = [
         _nuclei_yol(), "-u", url, "-jsonl",
-        "-stats", "-stats-interval", "3",       # irəliləyiş stderr-ə yazılır
+        "-stats-json", "-stats-interval", "2",  # maşınoxunan gedişat → stderr
+        "-duc",                                 # yeniləmə yoxlaması ~1 dəq yeyirdi
+        "-nc",                                  # rəng kodları olmasın
         "-severity", "critical,high,medium,low,info",
         "-rate-limit", "50", "-timeout", "10", "-retries", "1",
         "-no-interactsh",
     ]
     _log("nuclei:", " ".join(emr))
-    _post(f"/api/aktiv-skan/{job_id}/gedisat",
-          {"mesaj": "nuclei başladı — şablonlar yüklənir", "faiz": 3})
+
+    def xeber(mesaj: str, faiz: int | None = None, sinif: str = "",
+              nov: str = "setir") -> dict:
+        return _post(f"/api/aktiv-skan/{job_id}/gedisat",
+                     {"mesaj": mesaj, "faiz": faiz, "sinif": sinif, "nov": nov})
+
+    xeber("nuclei başladı — şablonlar yüklənir", 3)
 
     basla = time.time()
-    # stderr → stdout birləşdirilir: JSON sətir = tapıntı, qalan = stats/log
-    proses = subprocess.Popen(emr, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                              text=True, encoding="utf-8", errors="replace")
-    son_dayan_yoxlama = 0.0
+    proses = _prosess_ac(emr)
+    novbe: queue.Queue = queue.Queue()
+    for boru, etiket in ((proses.stdout, "tapinti"), (proses.stderr, "jurnal")):
+        threading.Thread(target=_boru_oxu, args=(boru, etiket, novbe),
+                         daemon=True).start()
 
-    def dayanibmi() -> bool:
-        cavab = _post(f"/api/aktiv-skan/{job_id}/gedisat",
-                      {"mesaj": f"skan gedir — {len(tapintilar)} tapıntı"})
-        return bool(cavab.get("dayandirildi"))
+    merhele = "şablonlar yüklənir"
+    faiz: int | None = 3
+    jurnal_sayi = 0
+    son_jurnal = ""
+    bitmis = 0            # bağlanan boru sayı — 2 olanda nuclei bitib
+    son_tik = 0.0
+    dayandirildi = False
 
     try:
-        for setir in proses.stdout:
-            setir = setir.strip()
-            if not setir:
-                continue
-
-            if setir.startswith("{"):
-                # Tapıntı — dərhal canlı göndər
-                t = nuclei_parse.bir_tapinti(_yukle(setir))
-                if t:
-                    tapintilar.append(t)
-                    sev = t["seviyye"]
-                    _post(f"/api/aktiv-skan/{job_id}/gedisat", {
-                        "mesaj": f"{_NISAN.get(sev, '•')} {t['ad']}",
-                        "sinif": _SINIF.get(sev, ""),
-                    })
+        while True:
+            try:
+                etiket, setir = novbe.get(timeout=0.3)
+            except queue.Empty:
+                pass
             else:
-                # nuclei stats sətri — faizi çıxar
-                m = _ISTEK_NAXIS.search(setir)
-                f = _FAIZ_NAXIS.search(setir)
-                if m or f:
-                    faiz = int(f.group(1)) if f else None
-                    if m and not faiz:
-                        edilmis, umumi = int(m.group(1)), max(1, int(m.group(2)))
-                        faiz = min(99, int(edilmis * 100 / umumi))
-                    _post(f"/api/aktiv-skan/{job_id}/gedisat", {
-                        "mesaj": f"şablonlar yoxlanılır… {len(tapintilar)} tapıntı",
-                        "faiz": faiz,
-                    })
+                if setir is None:
+                    bitmis += 1
+                elif etiket == "tapinti":
+                    # stdout = tapıntı JSONL-i — tapılan anda göndər
+                    t = nuclei_parse.bir_tapinti(_yukle(setir))
+                    if t:
+                        tapintilar.append(t)
+                        sev = t["seviyye"]
+                        xeber(f"{_NISAN.get(sev, '•')} {t['ad']}", faiz,
+                              _SINIF.get(sev, ""))
+                elif setir.startswith("{"):
+                    # stderr + JSON = `-stats-json` gedişat qeydi
+                    qeyd = _yukle(setir)
+                    yeni = _faiz_cixar(qeyd)
+                    if yeni is not None:
+                        # Zolaq geri getməsin: başlanğıc 3%-dir, nuclei-nin ilk
+                        # ölçüsü isə 1% ola bilər.
+                        faiz = max(faiz or 0, yeni)
+                    merhele = (f"yoxlanılır · {qeyd.get('requests', '?')}/"
+                               f"{qeyd.get('total', '?')} sorğu · "
+                               f"{qeyd.get('rps', '?')} rps")
+                else:
+                    # stderr + mətn = nuclei jurnalı (banner süzülür)
+                    uygun = _JURNAL_NAXIS.match(_ANSI_NAXIS.sub("", setir).strip())
+                    metn = uygun.group(2).strip() if uygun else ""
+                    if metn and metn != son_jurnal and jurnal_sayi < JURNAL_HEDDI:
+                        son_jurnal = metn
+                        jurnal_sayi += 1
+                        pis = uygun.group(1) in ("ERR", "FTL")
+                        xeber(f"· {metn[:160]}", faiz, "pis" if pis else "")
+                        if "Templates loaded" in metn:
+                            merhele = "şablonlar hazırdır — yoxlama başlayır"
 
             indi = time.time()
-            if indi - son_dayan_yoxlama > 3:      # dayandırma yoxlaması
-                son_dayan_yoxlama = indi
-                if dayanibmi():
+            if indi - son_tik >= TIK:
+                # nuclei sussa da vəziyyət göndərilir: mərhələ + keçən vaxt +
+                # faiz + tapıntı sayı. Eyni zamanda dayandırma/limit yoxlanır.
+                son_tik = indi
+                kecen = int(indi - basla)
+                cavab = xeber(
+                    f"{merhele} · {kecen // 60}:{kecen % 60:02d} · "
+                    f"{len(tapintilar)} tapıntı", faiz, nov="veziyyet")
+                if cavab.get("dayandirildi"):
                     _log("dayandırıldı — nuclei kəsilir")
-                    proses.kill()
-                    return
-            if indi - basla > MAX_MUDDET:
-                _log("vaxt limiti — nuclei kəsilir")
-                proses.kill()
+                    dayandirildi = True
+                    break
+                if indi - basla > MAX_MUDDET:
+                    _log("vaxt limiti — nuclei kəsilir")
+                    xeber("vaxt limiti doldu — toplanan tapıntılar yazılır", faiz,
+                          "pis")
+                    break
+
+            if bitmis >= 2 and novbe.empty():
                 break
-        proses.wait(timeout=10)
     finally:
         if proses.poll() is None:
             proses.kill()
 
+    if dayandirildi:
+        return
+
     _log(f"bitdi — {len(tapintilar)} tapıntı")
-    _post(f"/api/aktiv-skan/{job_id}/gedisat",
-          {"mesaj": f"skan bitdi — {len(tapintilar)} tapıntı işlənir", "faiz": 100})
+    xeber(f"skan bitdi — {len(tapintilar)} tapıntı işlənir", 100)
     _post(f"/api/aktiv-skan/{job_id}/netice", {"tapintilar": tapintilar})
 
 

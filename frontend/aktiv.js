@@ -7,6 +7,15 @@ let aktivUrl = '';
 let aktivDomain = '';
 let aktivJob = null;
 let aktivAxin = null;
+let aktivQopma = 0;      // ardıcıl SSE kəsilməsi sayı
+
+/* Canlı vəziyyət zolağı: yerində yenilənir, gedişat siyahısını doldurmur.
+   Worker bunu hər 2 saniyədən bir göndərir — nuclei sussa belə. */
+function aktivCanli(mesaj, faiz) {
+  el('canli').classList.remove('gizli');
+  el('canli-metn').textContent = mesaj;
+  if (faiz != null) el('canli-dolu').style.width = Math.max(1, Math.min(100, faiz)) + '%';
+}
 
 /* Təhlükəsizlik nəticəsi göstəriləndən sonra çağırılır (app.js-dən). */
 window.aktivHazirla = async function (domain, url) {
@@ -109,8 +118,10 @@ el('aktiv-basla').addEventListener('click', async () => {
   el('setirler').innerHTML = '';
   el('gedisat').classList.remove('gizli');
   basla = Date.now();
+  aktivQopma = 0;
   efektMatrix(true);
   gedisatSetri('aktiv skan', 'başladı — worker gözlənilir…');
+  aktivCanli('worker gözlənilir…', 1);
 
   let cavab;
   try {
@@ -129,7 +140,13 @@ el('aktiv-basla').addEventListener('click', async () => {
   aktivAxin = new EventSource(`/api/aktiv-skan/${aktivJob}/axin`);
 
   aktivAxin.addEventListener('gedisat', (e) => {
+    aktivQopma = 0;                       // hadisə gəldi → əlaqə sağlamdır
     const q = JSON.parse(e.data || '{}');
+    if (q.nov === 'veziyyet') {
+      /* Taymer yeniləməsi — hər 2 saniyədən bir gəlir, siyahını doldurmasın. */
+      aktivCanli(q.mesaj || '', q.faiz);
+      return;
+    }
     const etiket = q.faiz != null ? `nuclei ${q.faiz}%` : 'nuclei';
     gedisatSetri(etiket, q.mesaj || '', q.sinif || '');
   });
@@ -147,8 +164,18 @@ el('aktiv-basla').addEventListener('click', async () => {
     el('aktiv-netice').innerHTML =
       `<div class="xeb sari">${tehlukesiz(q.mesaj || 'Skan tamamlanmadı.')}</div>`;
   });
-  aktivAxin.addEventListener('son', aktivBitir);
-  aktivAxin.onerror = () => aktivBitir();
+  aktivAxin.addEventListener('son', () => aktivBitir());
+  aktivAxin.onerror = () => {
+    /* Bir kəsilmə skanı bitirməməlidir: nuclei arxa planda işləməkdə davam
+       edir və EventSource özü yenidən qoşulur. Əvvəllər burada dərhal
+       `close()` çağırılırdı — bir şəbəkə çınqılı canlı görüntünü əbədi
+       öldürürdü. İndi yalnız təkrar-təkrar uğursuzluqdan sonra əl çəkirik. */
+    if (++aktivQopma >= 6) {
+      return aktivBitir('canlı əlaqə kəsildi — skan arxada davam edir, '
+                        + 'səhifəni yeniləyib nəticəyə bax');
+    }
+    aktivCanli(`əlaqə kəsildi, yenidən qoşulur… (${aktivQopma}/6)`, null);
+  };
 });
 
 el('aktiv-dayandir').addEventListener('click', async () => {
@@ -161,6 +188,7 @@ function aktivBitir(xeta) {
   if (aktivAxin) { aktivAxin.close(); aktivAxin = null; }
   el('aktiv-basla').disabled = false;
   el('aktiv-dayandir').classList.add('gizli');
+  el('canli').classList.add('gizli');
   efektMatrix(false);
   if (xeta) gedisatSetri('xəta', xeta, 'pis');
 }

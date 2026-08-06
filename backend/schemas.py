@@ -68,6 +68,10 @@ class GedisatIstek(BaseModel):
     mesaj: str = Field(max_length=500)
     faiz: int | None = None
     sinif: str = ""   # "" | "ok" | "pis" — interfeysdə rəng üçün
+    # "setir" → gedişat siyahısına yeni sətir kimi əlavə olunur (tapıntı, jurnal);
+    # "veziyyet" → yalnız üstdəki canlı vəziyyət sətrini yeniləyir. Taymer
+    # yeniləmələri hər 2 saniyədən bir gəlir — onlar siyahını doldurmamalıdır.
+    nov: str = "setir"
 
 
 class NeticeIstek(BaseModel):
